@@ -1,19 +1,25 @@
 import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthProvider';
+import Navbar from './components/Navbar';
+import PrivateRoute from './components/PrivateRoute';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Profile from './pages/Profile';
 import LoanForm from './components/LoanForm';
 import Result from './components/Result';
 import './App.css';
 
-// Тип для результата расчёта
 interface CalculationResult {
   monthlyPayment: number;
   totalPayment: number;
   overpayment: number;
 }
 
-function App() {
+// Главная страница с калькулятором
+const CalculatorPage: React.FC = () => {
   const [result, setResult] = useState<CalculationResult | null>(null);
 
-  // Временная функция расчёта (позже заменим на вызов бэкенда)
   const mockCalculate = (data: {
     amount: number;
     months: number;
@@ -21,20 +27,17 @@ function App() {
     paymentType: 'annuity' | 'differentiated';
   }) => {
     const { amount, months, rate, paymentType } = data;
-    const monthlyRate = rate / 100 / 12; // месячная процентная ставка
+    const monthlyRate = rate / 100 / 12;
 
     if (paymentType === 'annuity') {
-      // Аннуитетный платёж: P = S * (i * (1 + i)^n) / ((1 + i)^n - 1)
       const i = monthlyRate;
-      const n = months; // для краткости, можно оставить и так
+      const n = months;
       const coefficient = (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
       const monthlyPayment = amount * coefficient;
       const totalPayment = monthlyPayment * n;
       const overpayment = totalPayment - amount;
       setResult({ monthlyPayment, totalPayment, overpayment });
     } else {
-      // Дифференцированный платёж (упрощённый расчёт для демонстрации интерфейса)
-      // В реальном проекте лучше делать точный расчёт на бэкенде
       const avgMonthlyPayment = amount / months + (amount * monthlyRate * (months + 1)) / (2 * months);
       const totalPayment = amount + (amount * monthlyRate * (months + 1)) / 2;
       const overpayment = totalPayment - amount;
@@ -52,6 +55,29 @@ function App() {
       <LoanForm onCalculate={mockCalculate} />
       {result && <Result {...result} />}
     </div>
+  );
+};
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<CalculatorPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            }
+          />
+        </Routes>
+      </AuthProvider>
+    </Router>
   );
 }
 
