@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: auth-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/credit-calculator}
+          jwk-set-uri: ${KEYCLOAK_JWK_URI:http://localhost:8080/realms/credit-calculator/protocol/openid-connect/certs}
+
+server:
+  port: 8081
+
+keycloak:
+  token-uri: ${KEYCLOAK_TOKEN_URI:http://localhost:8080/realms/credit-calculator/protocol/openid-connect/token}
+  client-id: credit-calculator-backend
+  client-secret: ${KEYCLOAK_CLIENT_SECRET}
