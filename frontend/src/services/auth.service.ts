@@ -1,3 +1,6 @@
+import axios from 'axios';
+import { AxiosError } from 'axios';
+
 export interface LoginData {
   email: string;
   password: string;
@@ -6,78 +9,105 @@ export interface LoginData {
 export interface RegisterData {
   email: string;
   password: string;
-  name: string;           // теперь обязательное
+  name: string;
 }
 
 export interface User {
   id: string;
   email: string;
-  name: string;           // тоже обязательное
+  name: string;
   token: string;
 }
 
-// Внутренний тип для хранения в localStorage (включает пароль)
-interface StoredUser extends User {
-  password: string;
+// Тип для payload JWT (расширен для полей Keycloak)
+interface JwtPayload {
+  sub?: string;
+  user_id?: string;
+  email?: string;
+  given_name?: string;
+  family_name?: string;
+  name?: string;
+  preferred_username?: string;
+  [key: string]: unknown; // для любых других полей
 }
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+function parseJwt(token: string): JwtPayload | null {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload) as JwtPayload;
+  } catch (e) {
+    console.warn('Failed to parse JWT', e);
+    return null;
+  }
+}
+
+const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8083';
+
+interface TokenResponse {
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number;
+  [key: string]: unknown;
+}
 
 const AuthService = {
   async register(data: RegisterData): Promise<User> {
     console.log('Register called with:', data);
-    await delay(1000);
-
-    const existing = localStorage.getItem(`user_${data.email}`);
-    if (existing) {
-      throw new Error('User already exists');
-    }
-
-    const storedUser: StoredUser = {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const fakeUser: User = {
       id: Math.random().toString(36).substr(2, 9),
       email: data.email,
-      name: data.name,               // используем
-      password: data.password,
+      name: data.name,
       token: 'fake-jwt-token-' + Math.random()
     };
-
-    localStorage.setItem(`user_${data.email}`, JSON.stringify(storedUser));
-
-    const userWithoutPassword: User = {
-      id: storedUser.id,
-      email: storedUser.email,
-      name: storedUser.name,
-      token: storedUser.token,
-    };
-    localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-
-    return userWithoutPassword;
+    localStorage.setItem('user', JSON.stringify(fakeUser));
+    return fakeUser;
   },
 
   async login(data: LoginData): Promise<User> {
     console.log('Login called with:', data);
-    await delay(1000);
 
-    const storedUserStr = localStorage.getItem(`user_${data.email}`);
-    if (!storedUserStr) {
-      throw new Error('Invalid email or password');
+    try {
+      const response = await axios.post<TokenResponse>(
+        `${API_GATEWAY_URL}/api/auth/login`,
+        {
+          username: data.email,
+          password: data.password
+        }
+      );
+
+      const tokenData = response.data;
+      const accessToken = tokenData.access_token;
+      const payload = parseJwt(accessToken) || {};
+
+      const user: User = {
+        id: (payload.sub as string) || (payload.user_id as string) || 'unknown',
+        email: (payload.email as string) || data.email,
+        // Приоритет: given_name, затем preferred_username, затем name, затем часть email
+        name: (payload.given_name as string) || 
+              (payload.preferred_username as string) || 
+              (payload.name as string) || 
+              data.email.split('@')[0],
+        token: accessToken
+      };
+
+      localStorage.setItem('user', JSON.stringify(user));
+      return user;
+
+    } catch (error: unknown) {
+      console.error('Login error:', error);
+      let message = 'Login failed';
+      if (error instanceof AxiosError) {
+        message = error.response?.data?.message || error.message || message;
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+      throw new Error(message);
     }
-
-    const storedUser: StoredUser = JSON.parse(storedUserStr);
-
-    if (storedUser.password !== data.password) {
-      throw new Error('Invalid email or password');
-    }
-
-    const userWithoutPassword: User = {
-      id: storedUser.id,
-      email: storedUser.email,
-      name: storedUser.name,
-      token: storedUser.token,
-    };
-    localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-
-    return userWithoutPassword;
   },
 
   logout(): void {
@@ -87,7 +117,7 @@ const AuthService = {
   getCurrentUser(): User | null {
     const userStr = localStorage.getItem('user');
     if (userStr) {
-      return JSON.parse(userStr);
+      return JSON.parse(userStr) as User;
     }
     return null;
   }
