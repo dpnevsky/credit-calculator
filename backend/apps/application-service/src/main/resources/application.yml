@@ -14,3 +14,7 @@ management:
 management.endpoint.health:
   probes:
     enabled: true
+
+integration:
+  scoring:
+    base-url: http://localhost:8082
