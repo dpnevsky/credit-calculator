@@ -6,15 +6,22 @@ spring-cloud = "2023.0.1"
 postgresql = "42.7.3"
 liquibase = "4.27.0"
 openhtmltopdf = "1.0.10"
-jackson-xml = "2.17.1"
+jackson = "2.17.1"
+jakarta-validation = "3.0.2"
 testcontainers = "1.19.8"
 awaitility = "4.2.1"
 
 [libraries]
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 liquibase-core = { module = "org.liquibase:liquibase-core", version.ref = "liquibase" }
-jackson-dataformat-xml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-xml", version.ref = "jackson-xml" }
+
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-dataformat-xml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-xml", version.ref = "jackson" }
+
+jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version.ref = "jakarta-validation" }
+
 openhtmltopdf-pdfbox = { module = "com.openhtmltopdf:openhtmltopdf-pdfbox", version.ref = "openhtmltopdf" }
+
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 testcontainers-kafka = { module = "org.testcontainers:kafka", version.ref = "testcontainers" }

@@ -1,4 +1,4 @@
-.idea
+.idea/
 
 .env
 
@@ -12,6 +12,6 @@ docs/references
 build/
 out/
 *.log
-
+*.iml
 
 
