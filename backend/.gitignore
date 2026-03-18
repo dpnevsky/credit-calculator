@@ -8,5 +8,10 @@ docs/my
 
 docs/references
 
+.gradle/
+build/
+out/
+*.log
+
 
 
