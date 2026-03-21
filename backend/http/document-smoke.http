@@ -1,0 +1,20 @@
+### Document generation smoke test
+
+POST http://localhost:8083/internal/test/documents/generate
+Content-Type: application/json
+
+{
+  "requestId": "33333333-3333-3333-3333-333333333333",
+  "applicationId": "22222222-2222-2222-2222-222222222222",
+  "documentType": "CREDIT_AGREEMENT",
+  "formats": ["PDF", "XML"],
+  "templateCode": "credit-agreement",
+  "templateVersion": "v1",
+  "requestedByUserId": "test-user",
+  "requestedAt": "2026-03-19T12:30:00Z",
+  "renderContext": {
+    "applicationNumber": "APP-2026-0001",
+    "customerName": "John Doe",
+    "approvedAmount": 100000.00
+  }
+}
