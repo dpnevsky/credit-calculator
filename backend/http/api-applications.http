@@ -1,0 +1,51 @@
+### approved caase
+POST http://localhost:8081/api/applications
+Content-Type: application/json
+X-Debug-Auth: allow
+
+{
+  "amount": 300000.00,
+  "termMonths": 24,
+  "firstName": "Danil",
+  "lastName": "Pnevsky",
+  "middleName": "Igorevich",
+  "email": "danil@example.com",
+  "birthDate": "1995-01-10",
+  "passportSeries": "1234",
+  "passportNumber": "567890"
+}
+
+### rejected case
+POST http://localhost:8081/api/applications
+Content-Type: application/json
+X-Debug-Auth: allow
+
+{
+  "amount": 250000.00,
+  "termMonths": 6,
+  "firstName": "Young",
+  "lastName": "Reject",
+  "middleName": null,
+  "email": "reject@example.com",
+  "birthDate": "2010-01-10",
+  "passportSeries": "1234",
+  "passportNumber": "567890"
+}
+
+### bad request
+POST http://localhost:8081/api/applications
+Content-Type: application/json
+#X-Debug-Auth: allow
+
+{
+  "amount": 10000.00,
+  "termMonths": 3,
+  "firstName": "",
+  "lastName": "Reject",
+  "middleName": null,
+  "email": "not-an-email",
+  "birthDate": "2030-01-10",
+  "passportSeries": "",
+  "passportNumber": ""
+}
+

@@ -1,0 +1,99 @@
+### scoring-service direct test - approved case
+POST http://localhost:8082/internal/scoring/evaluate
+Content-Type: application/json
+
+{
+"requestId": "b4d4c5b6-1111-4b22-8c33-123456789001",
+"applicationId": "d5e5d6c7-2222-4c33-9d44-123456789002",
+"productCode": "CREDIT_STANDARD",
+"requestedAt": "2026-03-22T18:30:00Z",
+
+"firstName": "Danil",
+"lastName": "Pnevsky",
+"middleName": "Igorevich",
+
+"gender": "MALE",
+"birthDate": "1995-01-10",
+
+"passportSeries": "1234",
+"passportNumber": "567890",
+"passportIssueDate": "2015-06-10",
+"passportIssueBranch": "UFMS TEST",
+
+"maritalStatus": "MARRIED",
+"dependentAmount": 0,
+
+"employment": {
+"employmentStatus": "EMPLOYED",
+"employerInn": "7701234567",
+"salary": 120000.00,
+"position": "MID_MANAGER",
+"workExperienceTotal": 60,
+"workExperienceCurrent": 24
+},
+
+"accountNumber": "50702810900000000001",
+
+"loanRequest": {
+"amount": 300000.00,
+"termMonths": 24,
+"currency": "RUB",
+"insuranceEnabled": true,
+"salaryClient": true
+},
+
+"prescoringSnapshot": {
+"prescorePassed": true,
+"rulesVersion": "prescore-v1"
+}
+}
+
+### scoring-service direct test - rejected case
+POST http://localhost:8082/internal/scoring/evaluate
+Content-Type: application/json
+
+{
+  "requestId": "43333333-3333-3333-3333-333333333333",
+  "applicationId": "44444444-4444-4444-4444-444444444444",
+  "productCode": "CREDIT_STANDARD",
+  "requestedAt": "2026-03-22T12:05:00Z",
+
+  "firstName": "Test",
+  "lastName": "Reject",
+  "middleName": null,
+
+  "gender": "MALE",
+  "birthDate": "2007-01-10",
+
+  "passportSeries": "1234",
+  "passportNumber": "567890",
+  "passportIssueDate": "2024-06-10",
+  "passportIssueBranch": "UFMS TEST",
+
+  "maritalStatus": "SINGLE",
+  "dependentAmount": 0,
+
+  "employment": {
+    "employmentStatus": "UNEMPLOYED",
+    "employerInn": null,
+    "salary": 10000.00,
+    "position": "OTHER",
+    "workExperienceTotal": 1,
+    "workExperienceCurrent": 1
+  },
+
+  "accountNumber": "40702810900000000002",
+
+  "loanRequest": {
+    "amount": 500000.00,
+    "termMonths": 24,
+    "currency": "RUB",
+    "insuranceEnabled": false,
+    "salaryClient": false
+  },
+
+  "prescoringSnapshot": {
+    "prescorePassed": true,
+    "rulesVersion": "prescore-v1"
+  }
+}

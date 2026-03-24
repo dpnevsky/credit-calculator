@@ -5,6 +5,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,9 +25,47 @@ public record ScoringEvaluationRequest(
         @NotNull
         OffsetDateTime requestedAt,
 
+        @NotBlank
+        String firstName,
+
+        @NotBlank
+        String lastName,
+
+        String middleName,
+
+        @NotNull
+        GenderType gender,
+
+        @NotNull
+        @Past
+        LocalDate birthDate,
+
+        @NotBlank
+        String passportSeries,
+
+        @NotBlank
+        String passportNumber,
+
+        @NotNull
+        @Past
+        LocalDate passportIssueDate,
+
+        @NotBlank
+        String passportIssueBranch,
+
+        @NotNull
+        MaritalStatusType maritalStatus,
+
+        @NotNull
+        @Min(0)
+        Integer dependentAmount,
+
         @NotNull
         @Valid
-        Applicant applicant,
+        Employment employment,
+
+        @NotBlank
+        String accountNumber,
 
         @NotNull
         @Valid
@@ -34,57 +73,91 @@ public record ScoringEvaluationRequest(
 
         @NotNull
         @Valid
-        PrescoringSnapshot prescoring
+        PrescoringSnapshot prescoringSnapshot
 ) {
 
-    public record Applicant(
-            @NotNull
-            LocalDate birthDate,
+    public enum GenderType {
+        MALE,
+        FEMALE,
+        NON_BINARY
+    }
 
-            @NotBlank
-            String employmentStatus,
+    public enum MaritalStatusType {
+        SINGLE,
+        MARRIED,
+        DIVORCED,
+        WIDOWED
+    }
+
+    public enum EmploymentStatusType {
+        EMPLOYED,
+        UNEMPLOYED,
+        SELF_EMPLOYED,
+        RETIRED,
+        BUSINESS_OWNER,
+        STUDENT
+    }
+
+    public enum PositionType {
+        MID_MANAGER,
+        TOP_MANAGER,
+        JUNIOR_MANAGER,
+        DEVELOPER,
+        SALES,
+        ACCOUNTANT,
+        HR,
+        OTHER
+    }
+
+    public record Employment(
+            @NotNull
+            EmploymentStatusType employmentStatus,
+
+            String employerInn,
 
             @NotNull
             @DecimalMin("0.00")
-            BigDecimal monthlyIncome,
+            BigDecimal salary,
 
             @NotNull
-            @DecimalMin("0.00")
-            BigDecimal monthlyExpenses,
+            PositionType position,
 
             @NotNull
-            @DecimalMin("0.00")
-            BigDecimal existingDebt
+            @Min(0)
+            Integer workExperienceTotal,
+
+            @NotNull
+            @Min(0)
+            Integer workExperienceCurrent
     ) {
     }
 
     public record LoanRequest(
             @NotNull
-            @DecimalMin("0.01")
+            @DecimalMin("20000.00")
             BigDecimal amount,
 
             @NotNull
-            @Min(1)
+            @Min(6)
             Integer termMonths,
 
             @NotBlank
-            String currency
+            String currency,
+
+            @NotNull
+            Boolean insuranceEnabled,
+
+            @NotNull
+            Boolean salaryClient
     ) {
     }
 
     public record PrescoringSnapshot(
             @NotNull
-            Boolean ageValid,
+            Boolean prescorePassed,
 
-            @NotNull
-            Boolean incomeValid,
-
-            @NotNull
-            @DecimalMin("0.00")
-            BigDecimal dtiRatio,
-
-            @NotNull
-            Boolean prescorePassed
+            @NotBlank
+            String rulesVersion
     ) {
     }
 }

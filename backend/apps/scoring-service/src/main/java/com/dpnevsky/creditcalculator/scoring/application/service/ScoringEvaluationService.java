@@ -2,100 +2,118 @@ package com.dpnevsky.creditcalculator.scoring.application.service;
 
 import com.dpnevsky.creditcalculator.contracts.scoring.api.ScoringEvaluationRequest;
 import com.dpnevsky.creditcalculator.contracts.scoring.api.ScoringEvaluationResponse;
+import com.dpnevsky.creditcalculator.scoring.domain.scoring.LegacyScoringPolicyService;
+import com.dpnevsky.creditcalculator.scoring.infrastructure.persistence.entity.ScoringRequestEntity;
+import com.dpnevsky.creditcalculator.scoring.infrastructure.persistence.entity.ScoringResultEntity;
+import com.dpnevsky.creditcalculator.scoring.infrastructure.persistence.repository.ScoringRequestRepository;
+import com.dpnevsky.creditcalculator.scoring.infrastructure.persistence.repository.ScoringResultRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class ScoringEvaluationService {
 
+    private final ScoringRequestRepository scoringRequestRepository;
+    private final ScoringResultRepository scoringResultRepository;
+    private final LegacyScoringPolicyService legacyScoringPolicyService;
+
+    public ScoringEvaluationService(
+            ScoringRequestRepository scoringRequestRepository,
+            ScoringResultRepository scoringResultRepository,
+            LegacyScoringPolicyService legacyScoringPolicyService
+    ) {
+        this.scoringRequestRepository = scoringRequestRepository;
+        this.scoringResultRepository = scoringResultRepository;
+        this.legacyScoringPolicyService = legacyScoringPolicyService;
+    }
+
+    @Transactional
     public ScoringEvaluationResponse evaluate(ScoringEvaluationRequest request) {
-        BigDecimal income = request.applicant().monthlyIncome();
-        BigDecimal expenses = request.applicant().monthlyExpenses();
-        BigDecimal existingDebt = request.applicant().existingDebt();
-        BigDecimal requestedAmount = request.loanRequest().amount();
+        return scoringRequestRepository.findByRequestId(request.requestId())
+                .map(existingRequest -> buildResponseForExistingRequest(existingRequest, request))
+                .orElseGet(() -> evaluateAndPersistNewRequest(request));
+    }
 
-        BigDecimal freeCashFlow = income
-                .subtract(expenses)
-                .subtract(existingDebt);
+    private ScoringEvaluationResponse buildResponseForExistingRequest(
+            ScoringRequestEntity existingRequest,
+            ScoringEvaluationRequest request
+    ) {
+        List<ScoringResultEntity> existingResults =
+                scoringResultRepository.findByScoringRequestId(existingRequest.getId());
 
-        boolean approved = Boolean.TRUE.equals(request.prescoring().prescorePassed())
-                && freeCashFlow.compareTo(BigDecimal.ZERO) > 0;
+        if (existingResults.isEmpty()) {
+            throw new IllegalStateException(
+                    "Scoring request exists, but scoring result was not found for requestId=" + request.requestId()
+            );
+        }
 
-        BigDecimal scoreValue = calculateScore(freeCashFlow, requestedAmount);
-        String riskGrade = calculateRiskGrade(scoreValue);
-        String decision = approved ? "APPROVED" : "REJECTED";
+        ScoringResultEntity existingResult = existingResults.get(0);
 
-        BigDecimal maxApprovedAmount = approved
-                ? requestedAmount.min(freeCashFlow.multiply(BigDecimal.valueOf(12)))
-                : BigDecimal.ZERO;
-
-        Integer maxTermMonths = approved ? request.loanRequest().termMonths() : null;
-
-        BigDecimal baseInterestRate = approved
-                ? calculateBaseInterestRate(riskGrade)
-                : null;
-
-        List<String> reasons = approved
-                ? List.of()
-                : List.of("INSUFFICIENT_FREE_CASH_FLOW");
+        LegacyScoringPolicyService.LegacyScoringDecision policyDecision =
+                legacyScoringPolicyService.evaluate(request);
 
         return new ScoringEvaluationResponse(
                 request.requestId(),
                 request.applicationId(),
-                decision,
-                scoreValue,
-                riskGrade,
-                "score-v1",
-                maxApprovedAmount,
-                maxTermMonths,
-                baseInterestRate,
-                reasons,
-                OffsetDateTime.now()
+                existingResult.getDecision(),
+                existingResult.getScoreValue(),
+                existingResult.getRiskGrade(),
+                existingResult.getRulesVersion(),
+                "APPROVED".equals(existingResult.getDecision()) ? policyDecision.maxApprovedAmount() : existingResultDecisionZeroAmount(),
+                "APPROVED".equals(existingResult.getDecision()) ? policyDecision.maxTermMonths() : null,
+                "APPROVED".equals(existingResult.getDecision()) ? policyDecision.finalRate() : null,
+                "APPROVED".equals(existingResult.getDecision()) ? List.of() : policyDecision.rejectionReasons(),
+                existingResult.getCalculatedAt()
         );
     }
 
-    private BigDecimal calculateScore(BigDecimal freeCashFlow, BigDecimal requestedAmount) {
-        if (requestedAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            return BigDecimal.ZERO;
-        }
+    private ScoringEvaluationResponse evaluateAndPersistNewRequest(ScoringEvaluationRequest request) {
+        OffsetDateTime now = OffsetDateTime.now();
 
-        BigDecimal ratio = freeCashFlow
-                .max(BigDecimal.ZERO)
-                .divide(requestedAmount, 4, RoundingMode.HALF_UP);
+        LegacyScoringPolicyService.LegacyScoringDecision decision =
+                legacyScoringPolicyService.evaluate(request);
 
-        BigDecimal rawScore = BigDecimal.valueOf(600)
-                .add(ratio.multiply(BigDecimal.valueOf(1000)));
+        ScoringRequestEntity scoringRequestEntity = new ScoringRequestEntity(
+                UUID.randomUUID(),
+                request.requestId(),
+                request.applicationId(),
+                request.productCode(),
+                "APPROVED".equals(decision.decision()) ? "PROCESSED" : "REJECTED",
+                now
+        );
+        scoringRequestRepository.save(scoringRequestEntity);
 
-        if (rawScore.compareTo(BigDecimal.valueOf(850)) > 0) {
-            return BigDecimal.valueOf(850);
-        }
+        ScoringResultEntity scoringResultEntity = new ScoringResultEntity(
+                UUID.randomUUID(),
+                scoringRequestEntity.getId(),
+                decision.decision(),
+                decision.scoreValue(),
+                decision.riskGrade(),
+                "score-v1",
+                now
+        );
+        scoringResultRepository.save(scoringResultEntity);
 
-        return rawScore.setScale(2, RoundingMode.HALF_UP);
+        return new ScoringEvaluationResponse(
+                request.requestId(),
+                request.applicationId(),
+                decision.decision(),
+                decision.scoreValue(),
+                decision.riskGrade(),
+                "score-v1",
+                decision.maxApprovedAmount(),
+                decision.maxTermMonths(),
+                decision.finalRate(),
+                decision.rejectionReasons(),
+                now
+        );
     }
 
-    private String calculateRiskGrade(BigDecimal scoreValue) {
-        if (scoreValue.compareTo(BigDecimal.valueOf(800)) >= 0) {
-            return "A";
-        }
-        if (scoreValue.compareTo(BigDecimal.valueOf(700)) >= 0) {
-            return "B";
-        }
-        if (scoreValue.compareTo(BigDecimal.valueOf(650)) >= 0) {
-            return "C";
-        }
-        return "D";
-    }
-
-    private BigDecimal calculateBaseInterestRate(String riskGrade) {
-        return switch (riskGrade) {
-            case "A" -> BigDecimal.valueOf(11.90);
-            case "B" -> BigDecimal.valueOf(13.50);
-            case "C" -> BigDecimal.valueOf(16.90);
-            default -> BigDecimal.valueOf(21.90);
-        };
+    private java.math.BigDecimal existingResultDecisionZeroAmount() {
+        return java.math.BigDecimal.ZERO;
     }
 }

@@ -1,0 +1,20 @@
+### get
+GET http://localhost:8081/api/applications/2dba5075-93c7-4b73-a9e3-73ed966f6496
+X-Debug-Auth: allow
+
+### path
+PATCH http://localhost:8081/api/applications/2dba5075-93c7-4b73-a9e3-73ed966f6496
+Content-Type: application/json
+X-Debug-Auth: allow
+
+{
+  "amount": 550000.00,
+  "termMonths": 37,
+  "firstName": "Danil",
+  "lastName": "Pnevsky",
+  "middleName": "Igorevich",
+  "email": "danil.updated@example.com",
+  "birthDate": "1995-01-10",
+  "passportSeries": "9999",
+  "passportNumber": "111222"
+}

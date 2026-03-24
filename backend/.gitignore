@@ -1,17 +1,28 @@
+# IntelliJ
 .idea/
+*.iml
+out/
 
+# Environment
 .env
+.env.*
+!.env.example
 
-java-development
+# Local
+java-development/
 
-docs/my
+# Docs that should stay local only
+docs/my/
+docs/references/
 
-docs/references
-
+# Gradle
 .gradle/
 build/
-out/
+**/build/
+
+# Logs
 *.log
-*.iml
 
-
+# OS files
+.DS_Store
+Thumbs.db

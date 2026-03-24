@@ -2,6 +2,18 @@ spring:
   application:
     name: application-service
 
+  datasource:
+    url: jdbc:postgresql://localhost:5433/application_db
+    username: application_user
+    password: application_pass
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
 server:
   port: 8081
 

@@ -21,27 +21,48 @@ public class ScoringSmokeTestService {
 
     public ScoringEvaluationResponse evaluateSample() {
         ScoringEvaluationRequest request = new ScoringEvaluationRequest(
-                UUID.fromString("11111111-1111-1111-1111-111111111111"),
-                UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
                 "CREDIT_STANDARD",
                 OffsetDateTime.now(),
-                new ScoringEvaluationRequest.Applicant(
-                        LocalDate.of(1995, 1, 10),
-                        "EMPLOYED",
+
+                "Danil",
+                "Pnevsky",
+                "Igorevich",
+
+                ScoringEvaluationRequest.GenderType.MALE,
+                LocalDate.of(1995, 1, 10),
+
+                "1234",
+                "567890",
+                LocalDate.of(2015, 6, 10),
+                "UFMS TEST",
+
+                ScoringEvaluationRequest.MaritalStatusType.MARRIED,
+                0,
+
+                new ScoringEvaluationRequest.Employment(
+                        ScoringEvaluationRequest.EmploymentStatusType.EMPLOYED,
+                        "7701234567",
                         BigDecimal.valueOf(120000.00),
-                        BigDecimal.valueOf(45000.00),
-                        BigDecimal.valueOf(12000.00)
+                        ScoringEvaluationRequest.PositionType.MID_MANAGER,
+                        60,
+                        24
                 ),
+
+                "40702810900000000001",
+
                 new ScoringEvaluationRequest.LoanRequest(
-                        BigDecimal.valueOf(100000.00),
+                        BigDecimal.valueOf(300000.00),
                         24,
-                        "RUB"
+                        "RUB",
+                        true,
+                        true
                 ),
+
                 new ScoringEvaluationRequest.PrescoringSnapshot(
                         true,
-                        true,
-                        BigDecimal.valueOf(0.10),
-                        true
+                        "prescore-v1"
                 )
         );
 

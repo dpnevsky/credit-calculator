@@ -1,0 +1,84 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-scoring-requests
+      author: dpnevsky
+      changes:
+        - createTable:
+            tableName: scoring_requests
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: request_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: application_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: product_code
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 002-create-scoring-results
+      author: dpnevsky
+      changes:
+        - createTable:
+            tableName: scoring_results
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: scoring_request_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: decision
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: score_value
+                  type: NUMERIC(10,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: risk_grade
+                  type: VARCHAR(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rules_version
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: calculated_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false

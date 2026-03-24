@@ -2,6 +2,14 @@ spring:
   application:
     name: scoring-service
 
+  datasource:
+    url: jdbc:postgresql://localhost:5434/scoring_db
+    username: scoring_user
+    password: scoring_pass
+
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
 server:
   port: 8082
 
