@@ -1,0 +1,68 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-scoring-snapshots
+      author: dpnevsky
+      changes:
+        - createTable:
+            tableName: scoring_snapshots
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: application_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: decision
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: score_value
+                  type: NUMERIC(15,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: risk_grade
+                  type: VARCHAR(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rules_version
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: approved_amount
+                  type: NUMERIC(15,2)
+              - column:
+                  name: approved_term_months
+                  type: INT
+              - column:
+                  name: approved_rate
+                  type: NUMERIC(8,2)
+              - column:
+                  name: reasons_json
+                  type: JSONB
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scored_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: scoring_snapshots
+            baseColumnNames: application_id
+            constraintName: fk_scoring_snapshots_application
+            referencedTableName: applications
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropTable:
+            tableName: scoring_snapshots

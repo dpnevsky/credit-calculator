@@ -1,0 +1,23 @@
+### save in db
+POST http://localhost:8081/api/applications/2dba5075-93c7-4b73-a9e3-73ed966f6496/submit
+Content-Type: application/json
+X-Debug-Auth: allow
+
+{
+  "insuranceEnabled": true,
+  "salaryClient": true,
+  "gender": "MALE",
+  "maritalStatus": "MARRIED",
+  "dependentAmount": 0,
+  "passportIssueDate": "2015-06-10",
+  "passportIssueBranch": "UFMS TEST",
+  "accountNumber": "40702810900000000001",
+  "employment": {
+    "employmentStatus": "EMPLOYED",
+    "employerInn": "7701234567",
+    "salary": 120000.00,
+    "position": "MID_MANAGER",
+    "workExperienceTotal": 60,
+    "workExperienceCurrent": 24
+  }
+}

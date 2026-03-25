@@ -79,3 +79,8 @@ databaseChangeLog:
                   defaultValueComputed: CURRENT_TIMESTAMP
                   constraints:
                     nullable: false
+
+  - include:
+      file: db/changelog/003-create-application-submit-data.yaml
+  - include:
+      file: db/changelog/004-create-scoring-snapshots.yaml
