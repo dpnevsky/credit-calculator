@@ -1,0 +1,3 @@
+### get last scoring snapshot
+GET http://localhost:8081/api/applications/2dba5075-93c7-4b73-a9e3-73ed966f6496/scoring-result
+X-Debug-Auth: allow
