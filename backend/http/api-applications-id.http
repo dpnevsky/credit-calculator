@@ -22,3 +22,7 @@ X-Debug-Auth: allow
   }
 }
 
+### get doc
+GET http://localhost:8081/api/applications/2dba5075-93c7-4b73-a9e3-73ed966f6496
+X-Debug-Auth: allow
+

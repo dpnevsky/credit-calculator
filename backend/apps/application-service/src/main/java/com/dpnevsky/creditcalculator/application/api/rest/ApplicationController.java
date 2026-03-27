@@ -4,6 +4,7 @@ import com.dpnevsky.creditcalculator.application.api.rest.dto.CreateApplicationR
 import com.dpnevsky.creditcalculator.application.api.rest.dto.CreateApplicationResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationScoringResultResponse;
+import com.dpnevsky.creditcalculator.application.api.rest.dto.RequestDocumentsResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.SubmitApplicationRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.SubmitApplicationResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.UpdateApplicationRequest;
@@ -11,6 +12,7 @@ import com.dpnevsky.creditcalculator.application.api.rest.dto.UpdateApplicationR
 import com.dpnevsky.creditcalculator.application.application.service.CreateApplicationService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationScoringResultService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationService;
+import com.dpnevsky.creditcalculator.application.application.service.RequestDocumentsService;
 import com.dpnevsky.creditcalculator.application.application.service.SubmitApplicationService;
 import com.dpnevsky.creditcalculator.application.application.service.UpdateApplicationService;
 import jakarta.validation.Valid;
@@ -32,19 +34,22 @@ public class ApplicationController {
     private final UpdateApplicationService updateApplicationService;
     private final SubmitApplicationService submitApplicationService;
     private final GetApplicationScoringResultService getApplicationScoringResultService;
+    private final RequestDocumentsService requestDocumentsService;
 
     public ApplicationController(
             CreateApplicationService createApplicationService,
             GetApplicationService getApplicationService,
             UpdateApplicationService updateApplicationService,
             SubmitApplicationService submitApplicationService,
-            GetApplicationScoringResultService getApplicationScoringResultService
+            GetApplicationScoringResultService getApplicationScoringResultService,
+            RequestDocumentsService requestDocumentsService
     ) {
         this.createApplicationService = createApplicationService;
         this.getApplicationService = getApplicationService;
         this.updateApplicationService = updateApplicationService;
         this.submitApplicationService = submitApplicationService;
         this.getApplicationScoringResultService = getApplicationScoringResultService;
+        this.requestDocumentsService = requestDocumentsService;
     }
 
     @PostMapping("/api/applications")
@@ -92,6 +97,15 @@ public class ApplicationController {
     ) {
         validateDebugHeader(debugAuthHeader);
         return getApplicationScoringResultService.getLatestByApplicationId(applicationId);
+    }
+
+    @PostMapping("/api/applications/{applicationId}/request-documents")
+    public RequestDocumentsResponse requestDocuments(
+            @RequestHeader(value = "X-Debug-Auth", required = false) String debugAuthHeader,
+            @PathVariable UUID applicationId
+    ) {
+        validateDebugHeader(debugAuthHeader);
+        return requestDocumentsService.requestDocuments(applicationId);
     }
 
     private void validateDebugHeader(String debugAuthHeader) {

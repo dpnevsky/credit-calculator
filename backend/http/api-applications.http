@@ -1,4 +1,4 @@
-### approved caase
+### approved case
 POST http://localhost:8081/api/applications
 Content-Type: application/json
 X-Debug-Auth: allow

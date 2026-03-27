@@ -1,0 +1,3 @@
+### request documents
+POST http://localhost:8081/api/applications/c134ea94-57c5-49cf-9c24-35424a4e8961/request-documents
+X-Debug-Auth: allow
