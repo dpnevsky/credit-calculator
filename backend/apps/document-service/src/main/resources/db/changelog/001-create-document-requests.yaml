@@ -1,0 +1,73 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-document-requests
+      author: dpnevsky
+      changes:
+        - createTable:
+            tableName: document_requests
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: request_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: application_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: document_type
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: formats_json
+                  type: JSONB
+                  constraints:
+                    nullable: false
+              - column:
+                  name: template_code
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: template_version
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requested_by_user_id
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requested_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: render_context_json
+                  type: JSONB
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: document_requests
