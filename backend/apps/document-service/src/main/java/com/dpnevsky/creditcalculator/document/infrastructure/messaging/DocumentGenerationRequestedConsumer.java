@@ -42,6 +42,15 @@ public class DocumentGenerationRequestedConsumer {
         EventEnvelope<DocumentGenerationRequested> envelope = parse(rawMessage);
         DocumentGenerationRequested payload = envelope.payload();
 
+        if (documentRequestRepository.findByRequestId(payload.requestId()).isPresent()) {
+            log.info(
+                    "Skip duplicate DocumentGenerationRequested applicationId={}, requestId={}",
+                    payload.applicationId(),
+                    payload.requestId()
+            );
+            return;
+        }
+
         DocumentRequestEntity documentRequestEntity = new DocumentRequestEntity(
                 UUID.randomUUID(),
                 payload.requestId(),

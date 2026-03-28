@@ -14,6 +14,7 @@ import java.util.UUID;
 @Service
 public class RequestDocumentsService {
 
+    private static final String SCORING_COMPLETED_STATUS = "SCORING_COMPLETED";
     private static final String DOCUMENTS_REQUESTED_STATUS = "DOCUMENTS_REQUESTED";
 
     private final ApplicationRepository applicationRepository;
@@ -33,7 +34,16 @@ public class RequestDocumentsService {
                 .orElseThrow(() -> new ApplicationNotFoundException(applicationId));
 
         String currentStatus = existingApplication.getStatus();
-        if (!"SCORING_COMPLETED".equals(currentStatus)) {
+
+        if (DOCUMENTS_REQUESTED_STATUS.equals(currentStatus)) {
+            return new RequestDocumentsResponse(
+                    applicationId,
+                    DOCUMENTS_REQUESTED_STATUS,
+                    "Document generation has already been requested"
+            );
+        }
+
+        if (!SCORING_COMPLETED_STATUS.equals(currentStatus)) {
             throw new IllegalStateException(
                     "Documents can be requested only for applications with status SCORING_COMPLETED"
             );

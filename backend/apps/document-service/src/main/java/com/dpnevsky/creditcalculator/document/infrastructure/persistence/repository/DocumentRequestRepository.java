@@ -3,7 +3,10 @@ package com.dpnevsky.creditcalculator.document.infrastructure.persistence.reposi
 import com.dpnevsky.creditcalculator.document.infrastructure.persistence.entity.DocumentRequestEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public interface DocumentRequestRepository extends JpaRepository<DocumentRequestEntity, UUID> {
+
+    Optional<DocumentRequestEntity> findByRequestId(UUID requestId);
 }
