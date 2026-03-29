@@ -10,35 +10,41 @@ import java.util.UUID;
 @Service
 public class DocumentGenerationService {
 
+    private static final String GENERATED_STATUS = "GENERATED";
+
     public DocumentGenerated generate(DocumentGenerationRequested request) {
-        String primaryFormat = request.formats().isEmpty() ? "PDF" : request.formats().get(0);
+        String format = request.formats().get(0);
+        String fileExtension = resolveFileExtension(format);
+        String mimeType = resolveMimeType(format);
+
+        UUID documentId = UUID.randomUUID();
+        String fileName = request.documentType().toLowerCase() + "-" + request.applicationId() + "." + fileExtension;
+        String storageKey = "applications/" + request.applicationId() + "/" + fileName;
 
         return new DocumentGenerated(
                 request.requestId(),
                 request.applicationId(),
-                UUID.randomUUID(),
+                documentId,
                 request.documentType(),
-                primaryFormat,
-                buildFileName(request.documentType(), request.applicationId(), primaryFormat),
-                resolveMimeType(primaryFormat),
-                "FILESYSTEM",
-                buildStorageKey(request.applicationId(), request.documentType(), primaryFormat),
-                1024L,
-                "stub-checksum-sha256",
+                format,
+                fileName,
+                mimeType,
+                storageKey,
+                GENERATED_STATUS,
                 OffsetDateTime.now()
         );
     }
 
-    private String buildFileName(String documentType, UUID applicationId, String format) {
-        return documentType.toLowerCase() + "-" + applicationId + "." + format.toLowerCase();
-    }
-
-    private String buildStorageKey(UUID applicationId, String documentType, String format) {
-        return "applications/" + applicationId + "/" + documentType.toLowerCase() + "." + format.toLowerCase();
+    private String resolveFileExtension(String format) {
+        return switch (format) {
+            case "PDF" -> "pdf";
+            case "XML" -> "xml";
+            default -> "bin";
+        };
     }
 
     private String resolveMimeType(String format) {
-        return switch (format.toUpperCase()) {
+        return switch (format) {
             case "PDF" -> "application/pdf";
             case "XML" -> "application/xml";
             default -> "application/octet-stream";

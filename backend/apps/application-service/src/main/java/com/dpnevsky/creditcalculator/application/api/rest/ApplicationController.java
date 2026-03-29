@@ -2,6 +2,7 @@ package com.dpnevsky.creditcalculator.application.api.rest;
 
 import com.dpnevsky.creditcalculator.application.api.rest.dto.CreateApplicationRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.CreateApplicationResponse;
+import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationDocumentResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationScoringResultResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.RequestDocumentsResponse;
@@ -10,6 +11,7 @@ import com.dpnevsky.creditcalculator.application.api.rest.dto.SubmitApplicationR
 import com.dpnevsky.creditcalculator.application.api.rest.dto.UpdateApplicationRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.UpdateApplicationResponse;
 import com.dpnevsky.creditcalculator.application.application.service.CreateApplicationService;
+import com.dpnevsky.creditcalculator.application.application.service.GetApplicationDocumentsService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationScoringResultService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationService;
 import com.dpnevsky.creditcalculator.application.application.service.RequestDocumentsService;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -35,6 +38,7 @@ public class ApplicationController {
     private final SubmitApplicationService submitApplicationService;
     private final GetApplicationScoringResultService getApplicationScoringResultService;
     private final RequestDocumentsService requestDocumentsService;
+    private final GetApplicationDocumentsService getApplicationDocumentsService;
 
     public ApplicationController(
             CreateApplicationService createApplicationService,
@@ -42,7 +46,8 @@ public class ApplicationController {
             UpdateApplicationService updateApplicationService,
             SubmitApplicationService submitApplicationService,
             GetApplicationScoringResultService getApplicationScoringResultService,
-            RequestDocumentsService requestDocumentsService
+            RequestDocumentsService requestDocumentsService,
+            GetApplicationDocumentsService getApplicationDocumentsService
     ) {
         this.createApplicationService = createApplicationService;
         this.getApplicationService = getApplicationService;
@@ -50,6 +55,7 @@ public class ApplicationController {
         this.submitApplicationService = submitApplicationService;
         this.getApplicationScoringResultService = getApplicationScoringResultService;
         this.requestDocumentsService = requestDocumentsService;
+        this.getApplicationDocumentsService = getApplicationDocumentsService;
     }
 
     @PostMapping("/api/applications")
@@ -106,6 +112,15 @@ public class ApplicationController {
     ) {
         validateDebugHeader(debugAuthHeader);
         return requestDocumentsService.requestDocuments(applicationId);
+    }
+
+    @GetMapping("/api/applications/{applicationId}/documents")
+    public List<GetApplicationDocumentResponse> getApplicationDocuments(
+            @RequestHeader(value = "X-Debug-Auth", required = false) String debugAuthHeader,
+            @PathVariable UUID applicationId
+    ) {
+        validateDebugHeader(debugAuthHeader);
+        return getApplicationDocumentsService.getByApplicationId(applicationId);
     }
 
     private void validateDebugHeader(String debugAuthHeader) {

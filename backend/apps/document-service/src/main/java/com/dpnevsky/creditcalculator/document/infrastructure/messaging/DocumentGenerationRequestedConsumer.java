@@ -1,7 +1,10 @@
 package com.dpnevsky.creditcalculator.document.infrastructure.messaging;
 
+import com.dpnevsky.creditcalculator.contracts.document.events.DocumentGenerated;
 import com.dpnevsky.creditcalculator.contracts.document.events.DocumentGenerationRequested;
 import com.dpnevsky.creditcalculator.contracts.eventenvelope.EventEnvelope;
+import com.dpnevsky.creditcalculator.document.application.port.out.DocumentGeneratedPublisher;
+import com.dpnevsky.creditcalculator.document.application.service.DocumentGenerationService;
 import com.dpnevsky.creditcalculator.document.infrastructure.persistence.entity.DocumentRequestEntity;
 import com.dpnevsky.creditcalculator.document.infrastructure.persistence.entity.GeneratedDocumentEntity;
 import com.dpnevsky.creditcalculator.document.infrastructure.persistence.repository.DocumentRequestRepository;
@@ -29,15 +32,21 @@ public class DocumentGenerationRequestedConsumer {
     private final ObjectMapper objectMapper;
     private final DocumentRequestRepository documentRequestRepository;
     private final GeneratedDocumentRepository generatedDocumentRepository;
+    private final DocumentGenerationService documentGenerationService;
+    private final DocumentGeneratedPublisher documentGeneratedPublisher;
 
     public DocumentGenerationRequestedConsumer(
             ObjectMapper objectMapper,
             DocumentRequestRepository documentRequestRepository,
-            GeneratedDocumentRepository generatedDocumentRepository
+            GeneratedDocumentRepository generatedDocumentRepository,
+            DocumentGenerationService documentGenerationService,
+            DocumentGeneratedPublisher documentGeneratedPublisher
     ) {
         this.objectMapper = objectMapper;
         this.documentRequestRepository = documentRequestRepository;
         this.generatedDocumentRepository = generatedDocumentRepository;
+        this.documentGenerationService = documentGenerationService;
+        this.documentGeneratedPublisher = documentGeneratedPublisher;
     }
 
     @Transactional
@@ -76,23 +85,19 @@ public class DocumentGenerationRequestedConsumer {
         );
         DocumentRequestEntity savedRequest = documentRequestRepository.save(receivedRequest);
 
-        String format = payload.formats().get(0);
-        String fileExtension = resolveFileExtension(format);
-        String mimeType = resolveMimeType(format);
-        String fileName = payload.documentType().toLowerCase() + "-" + payload.applicationId() + "." + fileExtension;
-        String storageKey = "applications/" + payload.applicationId() + "/" + fileName;
+        DocumentGenerated generatedEvent = documentGenerationService.generate(payload);
 
         GeneratedDocumentEntity generatedDocumentEntity = new GeneratedDocumentEntity(
-                UUID.randomUUID(),
-                payload.requestId(),
-                payload.applicationId(),
-                payload.documentType(),
-                format,
-                fileName,
-                mimeType,
-                storageKey,
-                GENERATED_STATUS,
-                now
+                generatedEvent.documentId(),
+                generatedEvent.requestId(),
+                generatedEvent.applicationId(),
+                generatedEvent.documentType(),
+                generatedEvent.format(),
+                generatedEvent.fileName(),
+                generatedEvent.mimeType(),
+                generatedEvent.storageKey(),
+                generatedEvent.status(),
+                generatedEvent.generatedAt()
         );
         generatedDocumentRepository.save(generatedDocumentEntity);
 
@@ -112,6 +117,8 @@ public class DocumentGenerationRequestedConsumer {
         );
         documentRequestRepository.save(generatedRequest);
 
+        documentGeneratedPublisher.publish(generatedEvent);
+
         log.info(
                 "Processed DocumentGenerationRequested applicationId={}, requestId={}, status={}",
                 payload.applicationId(),
@@ -129,21 +136,5 @@ public class DocumentGenerationRequestedConsumer {
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Failed to parse DocumentGenerationRequested event", exception);
         }
-    }
-
-    private String resolveFileExtension(String format) {
-        return switch (format) {
-            case "PDF" -> "pdf";
-            case "XML" -> "xml";
-            default -> "bin";
-        };
-    }
-
-    private String resolveMimeType(String format) {
-        return switch (format) {
-            case "PDF" -> "application/pdf";
-            case "XML" -> "application/xml";
-            default -> "application/octet-stream";
-        };
     }
 }

@@ -1,10 +1,10 @@
 databaseChangeLog:
   - changeSet:
-      id: 001-create-applications
+      id: 005-create-application-documents
       author: dpnevsky
       changes:
         - createTable:
-            tableName: applications
+            tableName: application_documents
             columns:
               - column:
                   name: id
@@ -13,51 +13,54 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
+                  name: application_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: request_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: document_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: document_type
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: format
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mime_type
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: storage_key
+                  type: VARCHAR(512)
+                  constraints:
+                    nullable: false
+              - column:
                   name: status
                   type: VARCHAR(32)
                   constraints:
                     nullable: false
               - column:
-                  name: amount
-                  type: NUMERIC(15,2)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: term_months
-                  type: INT
-                  constraints:
-                    nullable: false
-              - column:
-                  name: first_name
-                  type: VARCHAR(100)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: last_name
-                  type: VARCHAR(100)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: middle_name
-                  type: VARCHAR(100)
-              - column:
-                  name: email
-                  type: VARCHAR(255)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: birth_date
-                  type: DATE
-                  constraints:
-                    nullable: false
-              - column:
-                  name: passport_series
-                  type: VARCHAR(32)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: passport_number
-                  type: VARCHAR(32)
+                  name: generated_at
+                  type: TIMESTAMP WITH TIME ZONE
                   constraints:
                     nullable: false
               - column:
@@ -65,24 +68,6 @@ databaseChangeLog:
                   type: TIMESTAMP WITH TIME ZONE
                   constraints:
                     nullable: false
-
-  - changeSet:
-      id: 002-add-updated-at-to-applications
-      author: dpnevsky
-      changes:
-        - addColumn:
-            tableName: applications
-            columns:
-              - column:
-                  name: updated_at
-                  type: TIMESTAMP WITH TIME ZONE
-                  defaultValueComputed: CURRENT_TIMESTAMP
-                  constraints:
-                    nullable: false
-
-  - include:
-      file: db/changelog/003-create-application-submit-data.yaml
-  - include:
-      file: db/changelog/004-create-scoring-snapshots.yaml
-  - include:
-      file: db/changelog/005-create-application-documents.yaml
+      rollback:
+        - dropTable:
+            tableName: application_documents

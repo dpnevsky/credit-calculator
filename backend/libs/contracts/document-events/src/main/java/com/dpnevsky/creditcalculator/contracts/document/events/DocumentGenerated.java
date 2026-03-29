@@ -29,16 +29,10 @@ public record DocumentGenerated(
         String mimeType,
 
         @NotBlank
-        String storageBackend,
-
-        @NotBlank
         String storageKey,
 
-        @NotNull
-        Long fileSizeBytes,
-
         @NotBlank
-        String checksumSha256,
+        String status,
 
         @NotNull
         OffsetDateTime generatedAt
