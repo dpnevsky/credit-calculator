@@ -1,0 +1,3 @@
+### get list documents
+GET http://localhost:8083/internal/documents/application/2dba5075-93c7-4b73-a9e3-73ed966f6496
+X-Debug-Auth: allow
