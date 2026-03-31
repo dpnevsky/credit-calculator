@@ -1,0 +1,31 @@
+@host = http://localhost:8083
+@applicationId = 2100f827-df84-404b-9e85-7536e199d1da
+
+### 1) Получить список документов по applicationId и сохранить documentId первого документа
+GET {{host}}/internal/documents/application/{{applicationId}}
+X-Debug-Auth: allow
+
+> {%
+    client.test("documents list loaded", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(Array.isArray(response.body), "Expected array response");
+        client.assert(response.body.length > 0, "Expected at least one generated document");
+    });
+
+    client.global.set("documentId", response.body[0].documentId);
+    client.log("documentId = " + response.body[0].documentId);
+%}
+
+### 2) Скачать документ по documentId
+GET {{host}}/internal/documents/{{documentId}}/download
+X-Debug-Auth: allow
+
+> {%
+    client.test("download response is ok", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(
+            response.headers.valueOf("Content-Disposition") !== null,
+            "Expected Content-Disposition header"
+        );
+    });
+%}
