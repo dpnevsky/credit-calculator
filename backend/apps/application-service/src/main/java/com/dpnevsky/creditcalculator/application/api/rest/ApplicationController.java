@@ -11,6 +11,7 @@ import com.dpnevsky.creditcalculator.application.api.rest.dto.SubmitApplicationR
 import com.dpnevsky.creditcalculator.application.api.rest.dto.UpdateApplicationRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.UpdateApplicationResponse;
 import com.dpnevsky.creditcalculator.application.application.service.CreateApplicationService;
+import com.dpnevsky.creditcalculator.application.application.service.DownloadApplicationDocumentService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationDocumentsService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationScoringResultService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationService;
@@ -18,6 +19,10 @@ import com.dpnevsky.creditcalculator.application.application.service.RequestDocu
 import com.dpnevsky.creditcalculator.application.application.service.SubmitApplicationService;
 import com.dpnevsky.creditcalculator.application.application.service.UpdateApplicationService;
 import jakarta.validation.Valid;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,6 +44,7 @@ public class ApplicationController {
     private final GetApplicationScoringResultService getApplicationScoringResultService;
     private final RequestDocumentsService requestDocumentsService;
     private final GetApplicationDocumentsService getApplicationDocumentsService;
+    private final DownloadApplicationDocumentService downloadApplicationDocumentService;
 
     public ApplicationController(
             CreateApplicationService createApplicationService,
@@ -47,7 +53,8 @@ public class ApplicationController {
             SubmitApplicationService submitApplicationService,
             GetApplicationScoringResultService getApplicationScoringResultService,
             RequestDocumentsService requestDocumentsService,
-            GetApplicationDocumentsService getApplicationDocumentsService
+            GetApplicationDocumentsService getApplicationDocumentsService,
+            DownloadApplicationDocumentService downloadApplicationDocumentService
     ) {
         this.createApplicationService = createApplicationService;
         this.getApplicationService = getApplicationService;
@@ -56,6 +63,7 @@ public class ApplicationController {
         this.getApplicationScoringResultService = getApplicationScoringResultService;
         this.requestDocumentsService = requestDocumentsService;
         this.getApplicationDocumentsService = getApplicationDocumentsService;
+        this.downloadApplicationDocumentService = downloadApplicationDocumentService;
     }
 
     @PostMapping("/api/applications")
@@ -121,6 +129,33 @@ public class ApplicationController {
     ) {
         validateDebugHeader(debugAuthHeader);
         return getApplicationDocumentsService.getByApplicationId(applicationId);
+    }
+
+    @GetMapping("/api/documents/{documentId}/download")
+    public ResponseEntity<byte[]> downloadDocument(
+            @RequestHeader(value = "X-Debug-Auth", required = false) String debugAuthHeader,
+            @PathVariable UUID documentId
+    ) {
+        validateDebugHeader(debugAuthHeader);
+
+        DownloadApplicationDocumentService.DownloadedApplicationDocument document =
+                downloadApplicationDocumentService.downloadByDocumentId(documentId);
+
+        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        if (document.mimeType() != null && !document.mimeType().isBlank()) {
+            mediaType = MediaType.parseMediaType(document.mimeType());
+        }
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment()
+                                .filename(document.fileName())
+                                .build()
+                                .toString()
+                )
+                .body(document.content());
     }
 
     private void validateDebugHeader(String debugAuthHeader) {
