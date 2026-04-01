@@ -86,3 +86,5 @@ databaseChangeLog:
       file: db/changelog/004-create-scoring-snapshots.yaml
   - include:
       file: db/changelog/005-create-application-documents.yaml
+  - include:
+      file: db/changelog/006-create-offers.yaml

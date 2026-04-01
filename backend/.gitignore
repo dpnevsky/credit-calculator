@@ -3,6 +3,12 @@
 *.iml
 /out/
 
+# Eclipse
+.project
+.classpath
+.settings/
+bin/
+
 # Environment
 .env
 .env.*

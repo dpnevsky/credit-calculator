@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: document-service-config
+data:
+  database-url: "jdbc:postgresql://postgres-document:5432/document_db"
+  kafka-bootstrap-servers: "kafka:9092"

@@ -1,0 +1,71 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-create-offers
+      author: dpnevsky
+      changes:
+        - createTable:
+            tableName: offers
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: application_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requested_amount
+                  type: NUMERIC(15,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_amount
+                  type: NUMERIC(15,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: term_months
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: monthly_payment
+                  type: NUMERIC(15,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rate
+                  type: NUMERIC(6,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: insurance_enabled
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: salary_client
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: selected
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_offers_application_id
+            tableName: offers
+            columns:
+              - column:
+                  name: application_id

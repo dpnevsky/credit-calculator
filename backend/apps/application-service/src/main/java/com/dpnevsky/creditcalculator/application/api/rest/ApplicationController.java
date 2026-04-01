@@ -5,7 +5,9 @@ import com.dpnevsky.creditcalculator.application.api.rest.dto.CreateApplicationR
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationDocumentResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationScoringResultResponse;
+import com.dpnevsky.creditcalculator.application.api.rest.dto.GetOfferResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.RequestDocumentsResponse;
+import com.dpnevsky.creditcalculator.application.api.rest.dto.SelectOfferResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.SubmitApplicationRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.SubmitApplicationResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.UpdateApplicationRequest;
@@ -15,7 +17,9 @@ import com.dpnevsky.creditcalculator.application.application.service.DownloadApp
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationDocumentsService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationScoringResultService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationService;
+import com.dpnevsky.creditcalculator.application.application.service.GetOffersService;
 import com.dpnevsky.creditcalculator.application.application.service.RequestDocumentsService;
+import com.dpnevsky.creditcalculator.application.application.service.SelectOfferService;
 import com.dpnevsky.creditcalculator.application.application.service.SubmitApplicationService;
 import com.dpnevsky.creditcalculator.application.application.service.UpdateApplicationService;
 import jakarta.validation.Valid;
@@ -45,6 +49,8 @@ public class ApplicationController {
     private final RequestDocumentsService requestDocumentsService;
     private final GetApplicationDocumentsService getApplicationDocumentsService;
     private final DownloadApplicationDocumentService downloadApplicationDocumentService;
+    private final GetOffersService getOffersService;
+    private final SelectOfferService selectOfferService;
 
     public ApplicationController(
             CreateApplicationService createApplicationService,
@@ -54,7 +60,9 @@ public class ApplicationController {
             GetApplicationScoringResultService getApplicationScoringResultService,
             RequestDocumentsService requestDocumentsService,
             GetApplicationDocumentsService getApplicationDocumentsService,
-            DownloadApplicationDocumentService downloadApplicationDocumentService
+            DownloadApplicationDocumentService downloadApplicationDocumentService,
+            GetOffersService getOffersService,
+            SelectOfferService selectOfferService
     ) {
         this.createApplicationService = createApplicationService;
         this.getApplicationService = getApplicationService;
@@ -64,6 +72,8 @@ public class ApplicationController {
         this.requestDocumentsService = requestDocumentsService;
         this.getApplicationDocumentsService = getApplicationDocumentsService;
         this.downloadApplicationDocumentService = downloadApplicationDocumentService;
+        this.getOffersService = getOffersService;
+        this.selectOfferService = selectOfferService;
     }
 
     @PostMapping("/api/applications")
@@ -156,6 +166,25 @@ public class ApplicationController {
                                 .toString()
                 )
                 .body(document.content());
+    }
+
+    @GetMapping("/api/applications/{applicationId}/offers")
+    public List<GetOfferResponse> getOffers(
+            @RequestHeader(value = "X-Debug-Auth", required = false) String debugAuthHeader,
+            @PathVariable UUID applicationId
+    ) {
+        validateDebugHeader(debugAuthHeader);
+        return getOffersService.getByApplicationId(applicationId);
+    }
+
+    @PostMapping("/api/applications/{applicationId}/offers/{offerId}/select")
+    public SelectOfferResponse selectOffer(
+            @RequestHeader(value = "X-Debug-Auth", required = false) String debugAuthHeader,
+            @PathVariable UUID applicationId,
+            @PathVariable UUID offerId
+    ) {
+        validateDebugHeader(debugAuthHeader);
+        return selectOfferService.selectOffer(applicationId, offerId);
     }
 
     private void validateDebugHeader(String debugAuthHeader) {
