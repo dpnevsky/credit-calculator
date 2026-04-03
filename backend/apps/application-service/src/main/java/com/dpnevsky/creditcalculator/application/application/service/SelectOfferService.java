@@ -49,6 +49,7 @@ public class SelectOfferService {
         offerRepository.save(offer);
 
         application.setStatus(OFFER_SELECTED_STATUS);
+        application.setUpdatedAt(OffsetDateTime.now());
         applicationRepository.save(application);
 
         return new SelectOfferResponse(

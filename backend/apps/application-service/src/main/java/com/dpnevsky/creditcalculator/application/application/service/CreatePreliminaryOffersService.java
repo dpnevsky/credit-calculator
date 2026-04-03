@@ -4,6 +4,7 @@ import com.dpnevsky.creditcalculator.application.domain.offers.LegacyPreOfferGen
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.OfferEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.OfferRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -24,11 +25,14 @@ public class CreatePreliminaryOffersService {
         this.offerRepository = offerRepository;
     }
 
+    @Transactional
     public List<LegacyPreOfferGenerationService.PreliminaryOffer> create(
             UUID applicationId,
             BigDecimal requestedAmount,
             Integer termMonths
     ) {
+        offerRepository.deleteAllByApplicationId(applicationId);
+
         List<LegacyPreOfferGenerationService.PreliminaryOffer> offers =
                 legacyPreOfferGenerationService.generateOffers(applicationId, requestedAmount, termMonths);
 

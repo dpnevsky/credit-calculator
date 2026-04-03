@@ -143,4 +143,8 @@ public class ApplicationEntity {
     public void setStatus(String status) {
         this.status = status;
     }
+
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }
