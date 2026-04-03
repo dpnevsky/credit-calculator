@@ -1,4 +1,5 @@
 import React from 'react';
+import './Result.css';
 
 interface ResultProps {
   monthlyPayment?: number;
@@ -6,27 +7,33 @@ interface ResultProps {
   overpayment?: number;
 }
 
+const formatMoney = (value: number) =>
+  new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(value);
+
 const Result: React.FC<ResultProps> = ({
   monthlyPayment,
   totalPayment,
   overpayment,
 }) => {
-  // Если результат ещё не получен, не показываем ничего
   if (monthlyPayment === undefined) return null;
 
   return (
-    <div style={{ marginTop: '20px', padding: '15px', border: '1px solid #ccc' }}>
-      <h3>Результаты расчёта</h3>
-      <p>
-        <strong>Ежемесячный платёж:</strong>{' '}
-        {monthlyPayment.toFixed(2)} ₽
-      </p>
-      <p>
-        <strong>Общая сумма выплат:</strong> {totalPayment?.toFixed(2)} ₽
-      </p>
-      <p>
-        <strong>Переплата:</strong> {overpayment?.toFixed(2)} ₽
-      </p>
+    <div className="result-card">
+      <h3 className="result-title">Результаты расчёта</h3>
+      <div className="result-grid">
+        <div className="result-item result-highlight">
+          <span className="result-label">Ежемесячный платёж</span>
+          <span className="result-value">{formatMoney(monthlyPayment)}</span>
+        </div>
+        <div className="result-item">
+          <span className="result-label">Общая сумма выплат</span>
+          <span className="result-value">{totalPayment !== undefined ? formatMoney(totalPayment) : '—'}</span>
+        </div>
+        <div className="result-item">
+          <span className="result-label">Переплата</span>
+          <span className="result-value result-overpayment">{overpayment !== undefined ? formatMoney(overpayment) : '—'}</span>
+        </div>
+      </div>
     </div>
   );
 };

@@ -6,6 +6,9 @@ import PrivateRoute from './components/PrivateRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import CreateApplication from './pages/CreateApplication';
+import ApplicationsList from './pages/ApplicationsList';
+import ApplicationDetails from './pages/ApplicationDetails';
 import LoanForm from './components/LoanForm';
 import Result from './components/Result';
 import './App.css';
@@ -16,11 +19,10 @@ interface CalculationResult {
   overpayment: number;
 }
 
-// Главная страница с калькулятором
 const CalculatorPage: React.FC = () => {
   const [result, setResult] = useState<CalculationResult | null>(null);
 
-  const mockCalculate = (data: {
+  const calculate = (data: {
     amount: number;
     months: number;
     rate: number;
@@ -50,10 +52,15 @@ const CalculatorPage: React.FC = () => {
   };
 
   return (
-    <div className="App">
-      <h1>Кредитный калькулятор</h1>
-      <LoanForm onCalculate={mockCalculate} />
-      {result && <Result {...result} />}
+    <div className="calculator-page">
+      <div className="calculator-hero">
+        <h1>Кредитный калькулятор</h1>
+        <p className="subtitle">Рассчитайте ежемесячный платёж и переплату по кредиту</p>
+      </div>
+      <div className="calculator-content">
+        <LoanForm onCalculate={calculate} />
+        {result && <Result {...result} />}
+      </div>
     </div>
   );
 };
@@ -63,19 +70,24 @@ function App() {
     <Router>
       <AuthProvider>
         <Navbar />
-        <Routes>
-          <Route path="/" element={<CalculatorPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/profile"
-            element={
-              <PrivateRoute>
-                <Profile />
-              </PrivateRoute>
-            }
-          />
-        </Routes>
+        <main className="main-content">
+          <Routes>
+            <Route path="/" element={<CalculatorPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/applications" element={<ApplicationsList />} />
+            <Route path="/applications/new" element={<CreateApplication />} />
+            <Route path="/applications/:applicationId" element={<ApplicationDetails />} />
+            <Route
+              path="/profile"
+              element={
+                <PrivateRoute>
+                  <Profile />
+                </PrivateRoute>
+              }
+            />
+          </Routes>
+        </main>
       </AuthProvider>
     </Router>
   );

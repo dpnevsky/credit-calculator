@@ -1,6 +1,50 @@
-.App {
-  max-width: 600px;
+/* ===== Main Content ===== */
+.main-content {
+  flex: 1;
+}
+
+/* ===== Calculator Page ===== */
+.calculator-page {
+  max-width: 700px;
   margin: 0 auto;
-  padding: 20px;
-  font-family: Arial, sans-serif;
+  padding: 32px 20px;
+}
+
+.calculator-hero {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.calculator-hero h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a1f36;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  color: #6b7280;
+  font-size: 1.05rem;
+}
+
+.calculator-content {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e8ecf0;
+}
+
+@media (max-width: 640px) {
+  .calculator-page {
+    padding: 20px 12px;
+  }
+
+  .calculator-content {
+    padding: 24px 16px;
+  }
+
+  .calculator-hero h1 {
+    font-size: 1.5rem;
+  }
 }

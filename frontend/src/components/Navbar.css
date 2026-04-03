@@ -1,7 +1,10 @@
 .navbar {
-  background-color: #007bff;
-  padding: 1rem;
-  margin-bottom: 2rem;
+  background: linear-gradient(135deg, #1e3a5f, #2563eb);
+  padding: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
 .navbar-container {
@@ -10,49 +13,170 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 0 24px;
+  height: 64px;
 }
 
 .navbar-logo {
   color: white;
-  font-size: 1.5rem;
-  font-weight: bold;
+  font-size: 1.25rem;
+  font-weight: 700;
   text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  font-size: 1.2rem;
 }
 
 .nav-links {
   display: flex;
-  gap: 1rem;
+  gap: 4px;
   align-items: center;
 }
 
+.nav-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.25);
+  margin: 0 8px;
+}
+
 .nav-link {
-  color: white;
+  color: rgba(255, 255, 255, 0.85);
   text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  transition: background-color 0.3s;
+  padding: 8px 14px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .nav-link:hover {
-  background-color: #0056b3;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+}
+
+.nav-cta {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-weight: 600;
+}
+
+.nav-cta:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .nav-button {
-  background-color: transparent;
-  color: white;
-  border: 1px solid white;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 6px 16px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
 }
 
 .nav-button:hover {
-  background-color: white;
-  color: #007bff;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: white;
 }
 
 .welcome-text {
-  color: white;
-  margin-right: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+}
+
+/* Mobile menu toggle */
+.menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.hamburger {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: white;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.hamburger::before,
+.hamburger::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 2px;
+  background: white;
+  left: 0;
+  transition: all 0.3s;
+}
+
+.hamburger::before { top: -7px; }
+.hamburger::after { top: 7px; }
+
+.hamburger.open {
+  background: transparent;
+}
+
+.hamburger.open::before {
+  top: 0;
+  transform: rotate(45deg);
+}
+
+.hamburger.open::after {
+  top: 0;
+  transform: rotate(-45deg);
+}
+
+@media (max-width: 768px) {
+  .menu-toggle {
+    display: block;
+  }
+
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    background: #1e3a5f;
+    flex-direction: column;
+    padding: 16px;
+    gap: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  .nav-links.nav-open {
+    display: flex;
+  }
+
+  .nav-divider {
+    width: 100%;
+    height: 1px;
+    margin: 8px 0;
+  }
+
+  .nav-link,
+  .nav-cta {
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+  }
 }

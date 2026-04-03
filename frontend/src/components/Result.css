@@ -1,0 +1,63 @@
+.result-card {
+  margin-top: 24px;
+  padding: 24px;
+  background: linear-gradient(135deg, #f0f9ff, #eff6ff);
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+}
+
+.result-title {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+  color: #1e40af;
+  font-weight: 600;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.result-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+}
+
+.result-highlight {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+}
+
+.result-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 500;
+}
+
+.result-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1a1f36;
+}
+
+.result-highlight .result-value {
+  color: #2563eb;
+  font-size: 1.3rem;
+}
+
+.result-overpayment {
+  color: #dc2626;
+}
+
+@media (max-width: 640px) {
+  .result-grid {
+    grid-template-columns: 1fr;
+  }
+}

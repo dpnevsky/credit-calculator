@@ -1,21 +1,18 @@
 import React, { useState } from 'react';
+import './LoanForm.css';
 
-// Описываем типы данных, которые будут приходить из формы
 interface FormData {
-  amount: number;        // сумма кредита
-  months: number;        // срок в месяцах
-  rate: number;          // процентная ставка
-  paymentType: 'annuity' | 'differentiated'; // тип платежа
+  amount: number;
+  months: number;
+  rate: number;
+  paymentType: 'annuity' | 'differentiated';
 }
 
-// Описываем props, которые компонент получает от родителя
 interface LoanFormProps {
-  onCalculate: (data: FormData) => void; // функция, которую вызовем при сабмите
+  onCalculate: (data: FormData) => void;
 }
 
-// Сам компонент
 const LoanForm: React.FC<LoanFormProps> = ({ onCalculate }) => {
-  // useState — это хук, который хранит состояние формы
   const [formData, setFormData] = useState<FormData>({
     amount: 1000000,
     months: 12,
@@ -23,7 +20,6 @@ const LoanForm: React.FC<LoanFormProps> = ({ onCalculate }) => {
     paymentType: 'annuity',
   });
 
-  // Обработчик изменения любого поля
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
     setFormData((prev) => ({
@@ -32,13 +28,11 @@ const LoanForm: React.FC<LoanFormProps> = ({ onCalculate }) => {
     }));
   };
 
-  // Обработчик отправки формы
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); // не даём странице перезагрузиться
-    onCalculate(formData); // вызываем функцию, переданную из App
+    e.preventDefault();
+    onCalculate(formData);
   };
 
-  // Очистка формы
   const handleClear = () => {
     setFormData({
       amount: 0,
@@ -49,9 +43,9 @@ const LoanForm: React.FC<LoanFormProps> = ({ onCalculate }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div>
-        <label htmlFor="amount">Сумма кредита (₽):</label>
+    <form onSubmit={handleSubmit} className="loan-form">
+      <div className="loan-form-field">
+        <label htmlFor="amount">Сумма кредита (&#8381;)</label>
         <input
           type="number"
           id="amount"
@@ -64,61 +58,64 @@ const LoanForm: React.FC<LoanFormProps> = ({ onCalculate }) => {
         />
       </div>
 
-      <div>
-        <label htmlFor="months">Срок (мес.):</label>
-        <input
-          type="number"
-          id="months"
-          name="months"
-          value={formData.months}
-          onChange={handleChange}
-          min={1}
-          required
-        />
-      </div>
-
-      <div>
-        <label htmlFor="rate">Процентная ставка (% годовых):</label>
-        <input
-          type="number"
-          id="rate"
-          name="rate"
-          value={formData.rate}
-          onChange={handleChange}
-          min={0}
-          step={0.1}
-          required
-        />
-      </div>
-
-      <div>
-        <label>Тип платежа:</label>
-        <label>
+      <div className="loan-form-row">
+        <div className="loan-form-field">
+          <label htmlFor="months">Срок (мес.)</label>
           <input
-            type="radio"
-            name="paymentType"
-            value="annuity"
-            checked={formData.paymentType === 'annuity'}
+            type="number"
+            id="months"
+            name="months"
+            value={formData.months}
             onChange={handleChange}
+            min={1}
+            required
           />
-          Аннуитетный
-        </label>
-        <label>
+        </div>
+        <div className="loan-form-field">
+          <label htmlFor="rate">Ставка (% годовых)</label>
           <input
-            type="radio"
-            name="paymentType"
-            value="differentiated"
-            checked={formData.paymentType === 'differentiated'}
+            type="number"
+            id="rate"
+            name="rate"
+            value={formData.rate}
             onChange={handleChange}
+            min={0}
+            step={0.1}
+            required
           />
-          Дифференцированный
-        </label>
+        </div>
       </div>
 
-      <button type="submit">Рассчитать</button>
-      <button type="button" onClick={handleClear}>
-        Очистить
-      </button>
+      <div className="loan-form-field">
+        <label>Тип платежа</label>
+        <div className="payment-type-group">
+          <label className="radio-label">
+            <input
+              type="radio"
+              name="paymentType"
+              value="annuity"
+              checked={formData.paymentType === 'annuity'}
+              onChange={handleChange}
+            />
+            <span className="radio-text">Аннуитетный</span>
+          </label>
+          <label className="radio-label">
+            <input
+              type="radio"
+              name="paymentType"
+              value="differentiated"
+              checked={formData.paymentType === 'differentiated'}
+              onChange={handleChange}
+            />
+            <span className="radio-text">Дифференцированный</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="loan-form-actions">
+        <button type="submit" className="calc-btn calc-btn-primary">Рассчитать</button>
+        <button type="button" className="calc-btn calc-btn-secondary" onClick={handleClear}>Очистить</button>
+      </div>
     </form>
   );
 };
