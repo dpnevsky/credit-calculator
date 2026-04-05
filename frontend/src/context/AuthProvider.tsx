@@ -1,21 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { AuthContext } from './AuthContext';
 import AuthService from '../services/auth.service';
-import type { User, LoginData, RegisterData } from '../services/auth.service';
+import type { User } from '../services/auth.service';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const currentUser = AuthService.getCurrentUser();
+        const currentUser = await AuthService.init();
         setUser(currentUser);
+
+        AuthService.onTokenExpired(async () => {
+          const refreshed = await AuthService.refreshToken();
+          if (refreshed) {
+            setUser(AuthService.getCurrentUser());
+          } else {
+            setUser(null);
+          }
+        });
       } catch (err) {
-        console.error('Failed to restore session', err);
+        console.error('Failed to initialize auth', err);
       } finally {
         setLoading(false);
       }
@@ -23,63 +31,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     initAuth();
   }, []);
 
-  const login = async (data: LoginData) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const userData = await AuthService.login(data);
-      setUser(userData);
-    } catch (err: unknown) {
-      let errorMessage = 'Login failed';
-      if (err instanceof Error) {
-        errorMessage = err.message;
-      } else if (typeof err === 'string') {
-        errorMessage = err;
-      }
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const login = useCallback(async () => {
+    await AuthService.login();
+  }, []);
 
-  const register = async (data: RegisterData) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const userData = await AuthService.register(data);
-      setUser(userData);
-    } catch (err: unknown) {
-      let errorMessage = 'Registration failed';
-      if (err instanceof Error) {
-        errorMessage = err.message;
-      } else if (typeof err === 'string') {
-        errorMessage = err;
-      }
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const register = useCallback(async () => {
+    await AuthService.register();
+  }, []);
 
-  const logout = () => {
-    AuthService.logout();
+  const logout = useCallback(async () => {
+    await AuthService.logout();
     setUser(null);
-    setError(null);
-  };
+  }, []);
+
+  const getToken = useCallback(async (): Promise<string | undefined> => {
+    await AuthService.refreshToken(30);
+    return AuthService.getToken();
+  }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
         loading,
-        error,
-        setError,        // добавлено
         login,
         register,
         logout,
         isAuthenticated: !!user,
+        getToken,
       }}
     >
       {children}

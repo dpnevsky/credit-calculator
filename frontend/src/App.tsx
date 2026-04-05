@@ -72,20 +72,16 @@ function App() {
         <Navbar />
         <main className="main-content">
           <Routes>
+            {/* Публичные маршруты — доступны без аутентификации */}
             <Route path="/" element={<CalculatorPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/applications" element={<ApplicationsList />} />
-            <Route path="/applications/new" element={<CreateApplication />} />
-            <Route path="/applications/:applicationId" element={<ApplicationDetails />} />
-            <Route
-              path="/profile"
-              element={
-                <PrivateRoute>
-                  <Profile />
-                </PrivateRoute>
-              }
-            />
+
+            {/* Защищённые маршруты — требуют аутентификации */}
+            <Route path="/applications" element={<PrivateRoute><ApplicationsList /></PrivateRoute>} />
+            <Route path="/applications/new" element={<PrivateRoute><CreateApplication /></PrivateRoute>} />
+            <Route path="/applications/:applicationId" element={<PrivateRoute><ApplicationDetails /></PrivateRoute>} />
+            <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
           </Routes>
         </main>
       </AuthProvider>

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import AuthService from './auth.service';
 import type {
   CreateApplicationRequest,
   CreateApplicationResponse,
@@ -16,8 +17,20 @@ const api = axios.create({
   baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
-    'X-Debug-Auth': 'allow',
   },
+});
+
+api.interceptors.request.use(async (config) => {
+  try {
+    await AuthService.refreshToken(30);
+  } catch {
+    // token refresh failed, continue without token
+  }
+  const token = AuthService.getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 const ApiService = {

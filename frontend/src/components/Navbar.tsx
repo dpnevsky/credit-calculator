@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Navbar.css';
 
 const Navbar: React.FC = () => {
-  const { user, logout, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const { user, logout, login, isAuthenticated } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  const handleLogout = async () => {
     setMobileOpen(false);
+    await logout();
+  };
+
+  const handleLogin = async () => {
+    setMobileOpen(false);
+    await login();
   };
 
   const closeMenu = () => setMobileOpen(false);
@@ -30,20 +33,21 @@ const Navbar: React.FC = () => {
 
         <div className={`nav-links ${mobileOpen ? 'nav-open' : ''}`}>
           <Link to="/" className="nav-link" onClick={closeMenu}>Калькулятор</Link>
-          <Link to="/applications" className="nav-link" onClick={closeMenu}>Заявки</Link>
-          <Link to="/applications/new" className="nav-link nav-cta" onClick={closeMenu}>Оформить кредит</Link>
+          {isAuthenticated && (
+            <>
+              <Link to="/applications" className="nav-link" onClick={closeMenu}>Мои заявки</Link>
+              <Link to="/applications/new" className="nav-link nav-cta" onClick={closeMenu}>Оформить кредит</Link>
+            </>
+          )}
           <div className="nav-divider"></div>
           {isAuthenticated ? (
             <>
-              <span className="welcome-text">Привет, {user?.name || user?.email}</span>
+              <span className="welcome-text">{user?.name || user?.email}</span>
               <Link to="/profile" className="nav-link" onClick={closeMenu}>Профиль</Link>
               <button onClick={handleLogout} className="nav-button">Выйти</button>
             </>
           ) : (
-            <>
-              <Link to="/login" className="nav-link" onClick={closeMenu}>Вход</Link>
-              <Link to="/register" className="nav-link" onClick={closeMenu}>Регистрация</Link>
-            </>
+            <button onClick={handleLogin} className="nav-button nav-login-btn">Войти</button>
           )}
         </div>
       </div>
