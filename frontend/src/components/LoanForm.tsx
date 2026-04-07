@@ -10,9 +10,10 @@ interface FormData {
 
 interface LoanFormProps {
   onCalculate: (data: FormData) => void;
+  onClear: () => void;
 }
 
-const LoanForm: React.FC<LoanFormProps> = ({ onCalculate }) => {
+const LoanForm: React.FC<LoanFormProps> = ({ onCalculate, onClear }) => {
   const [formData, setFormData] = useState<FormData>({
     amount: 1000000,
     months: 12,
@@ -40,6 +41,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ onCalculate }) => {
       rate: 0,
       paymentType: 'annuity',
     });
+    onClear();
   };
 
   return (

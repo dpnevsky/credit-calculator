@@ -51,6 +51,10 @@ const CalculatorPage: React.FC = () => {
     }
   };
 
+  const clearResult = () => {
+    setResult(null);
+  };
+
   return (
     <div className="calculator-page">
       <div className="calculator-hero">
@@ -58,7 +62,7 @@ const CalculatorPage: React.FC = () => {
         <p className="subtitle">Рассчитайте ежемесячный платёж и переплату по кредиту</p>
       </div>
       <div className="calculator-content">
-        <LoanForm onCalculate={calculate} />
+        <LoanForm onCalculate={calculate} onClear={clearResult} />
         {result && <Result {...result} />}
       </div>
     </div>

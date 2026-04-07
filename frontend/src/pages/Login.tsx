@@ -22,7 +22,7 @@ const Login: React.FC = () => {
     setError('');
     setSubmitting(true);
     try {
-      await login(username, password);
+      await login(username.trim(), password);
       navigate('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось выполнить вход');

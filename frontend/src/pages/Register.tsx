@@ -10,6 +10,7 @@ const Register: React.FC = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,9 +23,13 @@ const Register: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
+    if (password !== confirmPassword) {
+      setError('Пароли не совпадают');
+      return;
+    }
     setSubmitting(true);
     try {
-      await register(email, password, firstName, lastName);
+      await register(email.trim(), password, firstName.trim(), lastName.trim());
       navigate('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось зарегистрироваться');
@@ -80,6 +85,18 @@ const Register: React.FC = () => {
               minLength={8}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              required
+              autoComplete="new-password"
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="register-password-confirm">Повторите пароль</label>
+            <input
+              id="register-password-confirm"
+              type="password"
+              minLength={8}
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
               required
               autoComplete="new-password"
             />

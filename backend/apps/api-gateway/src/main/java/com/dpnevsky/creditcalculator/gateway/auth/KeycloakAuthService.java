@@ -5,6 +5,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -61,7 +62,9 @@ public class KeycloakAuthService {
     public Mono<AuthDtos.AuthResponse> register(AuthDtos.RegisterRequest request) {
         return adminAccessToken().flatMap(adminToken ->
                 createUser(adminToken, request)
-                        .then(assignApplicantRole(adminToken, request.email()))
+                        .then(resolveUserId(adminToken, request.email()))
+                        .flatMap(userId -> setPassword(adminToken, userId, request.password())
+                                .then(assignApplicantRole(adminToken, userId)))
                         .then(login(request.email(), request.password()))
         );
     }
@@ -89,12 +92,7 @@ public class KeycloakAuthService {
                 "email", request.email(),
                 "emailVerified", true,
                 "firstName", request.firstName(),
-                "lastName", request.lastName(),
-                "credentials", List.of(Map.of(
-                        "type", "password",
-                        "value", request.password(),
-                        "temporary", false
-                ))
+                "lastName", request.lastName()
         );
 
         return webClient.post()
@@ -107,18 +105,34 @@ public class KeycloakAuthService {
                 .then();
     }
 
-    private Mono<Void> assignApplicantRole(String adminToken, String email) {
-        return resolveUserId(adminToken, email)
-                .flatMap(userId -> getRealmRole(adminToken, "APPLICANT")
-                        .flatMap(role -> webClient.post()
-                                .uri("/admin/realms/{realm}/users/{userId}/role-mappings/realm", properties.realm(), userId)
-                                .header("Authorization", "Bearer " + adminToken)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .bodyValue(List.of(role))
-                                .retrieve()
-                                .toBodilessEntity()
-                                .then()
-                        ));
+    private Mono<Void> setPassword(String adminToken, String userId, String password) {
+        Map<String, Object> payload = Map.of(
+                "type", "password",
+                "value", password,
+                "temporary", false
+        );
+
+        return webClient.put()
+                .uri("/admin/realms/{realm}/users/{userId}/reset-password", properties.realm(), userId)
+                .header("Authorization", "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(payload)
+                .retrieve()
+                .toBodilessEntity()
+                .then();
+    }
+
+    private Mono<Void> assignApplicantRole(String adminToken, String userId) {
+        return getRealmRole(adminToken, "APPLICANT")
+                .flatMap(role -> webClient.post()
+                        .uri("/admin/realms/{realm}/users/{userId}/role-mappings/realm", properties.realm(), userId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(List.of(role))
+                        .retrieve()
+                        .toBodilessEntity()
+                        .then())
+                .onErrorResume(WebClientResponseException.NotFound.class, exception -> Mono.empty());
     }
 
     private Mono<String> resolveUserId(String adminToken, String email) {
