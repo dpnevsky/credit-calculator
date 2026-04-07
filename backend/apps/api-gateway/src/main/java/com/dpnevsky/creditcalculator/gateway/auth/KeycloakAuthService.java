@@ -17,9 +17,12 @@ import java.util.Optional;
 @Service
 public class KeycloakAuthService {
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE = new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<List<Map<String, Object>>> MAP_TYPE_LIST =
+            new ParameterizedTypeReference<>() {};
 
     private final WebClient webClient;
     private final KeycloakAuthProperties properties;
+    private volatile String resolvedClientSecret;
 
     public KeycloakAuthService(KeycloakAuthProperties properties) {
         this.webClient = WebClient.builder().baseUrl(properties.baseUrl()).build();
@@ -161,12 +164,8 @@ public class KeycloakAuthService {
     }
 
     private Mono<AuthDtos.AuthResponse> tokenRequest(MultiValueMap<String, String> formData) {
-        return webClient.post()
-                .uri("/realms/{realm}/protocol/openid-connect/token", properties.realm())
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body(BodyInserters.fromFormData(formData))
-                .retrieve()
-                .bodyToMono(MAP_TYPE)
+        return enrichWithClientSecret(formData)
+                .flatMap(this::requestToken)
                 .map(this::toAuthResponse);
     }
 
@@ -178,6 +177,62 @@ public class KeycloakAuthService {
         return new AuthDtos.AuthResponse(accessToken, refreshToken, expiresIn, tokenType);
     }
 
-    private static final ParameterizedTypeReference<List<Map<String, Object>>> MAP_TYPE_LIST =
-            new ParameterizedTypeReference<>() {};
+    private Mono<Map<String, Object>> requestToken(MultiValueMap<String, String> formData) {
+        return webClient.post()
+                .uri("/realms/{realm}/protocol/openid-connect/token", properties.realm())
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body(BodyInserters.fromFormData(formData))
+                .retrieve()
+                .bodyToMono(MAP_TYPE);
+    }
+
+    private Mono<MultiValueMap<String, String>> enrichWithClientSecret(MultiValueMap<String, String> formData) {
+        if (properties.clientSecret() != null && !properties.clientSecret().isBlank()) {
+            formData.set("client_secret", properties.clientSecret());
+            return Mono.just(formData);
+        }
+
+        return resolveClientSecret()
+                .map(secret -> {
+                    if (secret != null && !secret.isBlank()) {
+                        formData.set("client_secret", secret);
+                    }
+                    return formData;
+                })
+                .switchIfEmpty(Mono.just(formData));
+    }
+
+    private Mono<String> resolveClientSecret() {
+        if (resolvedClientSecret != null && !resolvedClientSecret.isBlank()) {
+            return Mono.just(resolvedClientSecret);
+        }
+
+        return adminAccessToken()
+                .flatMap(this::fetchClientSecretByClientId)
+                .doOnNext(secret -> resolvedClientSecret = secret)
+                .onErrorResume(WebClientResponseException.NotFound.class, exception -> Mono.empty());
+    }
+
+    private Mono<String> fetchClientSecretByClientId(String adminToken) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/admin/realms/{realm}/clients")
+                        .queryParam("clientId", properties.clientId())
+                        .build(properties.realm()))
+                .header("Authorization", "Bearer " + adminToken)
+                .retrieve()
+                .bodyToMono(MAP_TYPE_LIST)
+                .flatMap(clients -> clients.stream()
+                        .map(client -> (String) client.get("id"))
+                        .filter(id -> id != null && !id.isBlank())
+                        .findFirst()
+                        .map(Mono::just)
+                        .orElseGet(Mono::empty))
+                .flatMap(clientId -> webClient.get()
+                        .uri("/admin/realms/{realm}/clients/{clientId}/client-secret", properties.realm(), clientId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .retrieve()
+                        .bodyToMono(MAP_TYPE)
+                        .map(secretResponse -> (String) secretResponse.get("value")));
+    }
 }
