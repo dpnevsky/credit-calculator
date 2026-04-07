@@ -4,17 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import './Navbar.css';
 
 const Navbar: React.FC = () => {
-  const { user, logout, login, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
     setMobileOpen(false);
     await logout();
-  };
-
-  const handleLogin = async () => {
-    setMobileOpen(false);
-    await login();
   };
 
   const closeMenu = () => setMobileOpen(false);
@@ -47,7 +42,10 @@ const Navbar: React.FC = () => {
               <button onClick={handleLogout} className="nav-button">Выйти</button>
             </>
           ) : (
-            <button onClick={handleLogin} className="nav-button nav-login-btn">Войти</button>
+            <>
+              <Link to="/register" className="nav-link" onClick={closeMenu}>Регистрация</Link>
+              <Link to="/login" className="nav-button nav-login-btn" onClick={closeMenu}>Войти</Link>
+            </>
           )}
         </div>
       </div>

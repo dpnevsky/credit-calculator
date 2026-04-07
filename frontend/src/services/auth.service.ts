@@ -1,11 +1,3 @@
-import Keycloak from 'keycloak-js';
-
-const keycloak = new Keycloak({
-  url: import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8180',
-  realm: import.meta.env.VITE_KEYCLOAK_REALM || 'credit-calculator',
-  clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'credit-calculator-app',
-});
-
 export interface User {
   id: string;
   email: string;
@@ -14,89 +6,158 @@ export interface User {
   roles: string[];
 }
 
-function extractUser(): User | null {
-  if (!keycloak.authenticated || !keycloak.tokenParsed) {
+interface TokenResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  tokenType: string;
+}
+
+const ACCESS_TOKEN_KEY = 'cc_access_token';
+const REFRESH_TOKEN_KEY = 'cc_refresh_token';
+
+function parseJwt(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) {
+      return null;
+    }
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((char) => `%${(`00${char.charCodeAt(0).toString(16)}`).slice(-2)}`)
+        .join(''),
+    );
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
     return null;
   }
+}
 
-  const tp = keycloak.tokenParsed;
+function extractUser(token?: string): User | null {
+  if (!token) {
+    return null;
+  }
+  const payload = parseJwt(token);
+  if (!payload) {
+    return null;
+  }
+  const rolesRaw = payload.realm_access as { roles?: string[] } | undefined;
+  const email = (payload.email as string) || (payload.preferred_username as string) || '';
+  const name =
+    (payload.given_name as string) ||
+    (payload.name as string) ||
+    (payload.preferred_username as string) ||
+    '';
   return {
-    id: tp.sub || 'unknown',
-    email: (tp.email as string) || (tp.preferred_username as string) || '',
-    name: (tp.given_name as string) ||
-          (tp.name as string) ||
-          (tp.preferred_username as string) ||
-          '',
-    token: keycloak.token || '',
-    roles: (tp.realm_access?.roles as string[]) || [],
+    id: (payload.sub as string) || 'unknown',
+    email,
+    name,
+    token,
+    roles: rolesRaw?.roles || [],
   };
 }
 
-let initPromise: Promise<boolean> | null = null;
+function getAccessToken(): string | undefined {
+  return localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined;
+}
+
+function getRefreshToken(): string | undefined {
+  return localStorage.getItem(REFRESH_TOKEN_KEY) ?? undefined;
+}
+
+function saveTokens(tokens: TokenResponse): void {
+  localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+}
+
+async function parseResponse(response: Response): Promise<TokenResponse> {
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('Неверный логин или пароль');
+    }
+    if (response.status === 409) {
+      throw new Error('Пользователь с таким email уже существует');
+    }
+    throw new Error('Ошибка авторизации. Попробуйте снова');
+  }
+  return response.json() as Promise<TokenResponse>;
+}
 
 const AuthService = {
-  keycloak,
-
   async init(): Promise<User | null> {
-    if (!initPromise) {
-      initPromise = keycloak.init({
-        onLoad: 'check-sso',
-        silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
-        checkLoginIframe: false,
-        pkceMethod: 'S256',
-      });
-    }
-
-    try {
-      await initPromise;
-    } catch (err) {
-      console.error('Keycloak init failed:', err);
-    }
-
-    return extractUser();
+    const token = getAccessToken();
+    return extractUser(token);
   },
 
-  async login(): Promise<void> {
-    await keycloak.login({
-      redirectUri: window.location.origin + '/',
+  async login(username: string, password: string): Promise<User | null> {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
     });
+    const tokens = await parseResponse(response);
+    saveTokens(tokens);
+    return extractUser(tokens.accessToken);
   },
 
-  async register(): Promise<void> {
-    await keycloak.register({
-      redirectUri: window.location.origin + '/',
+  async register(email: string, password: string, firstName: string, lastName: string): Promise<User | null> {
+    const response = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, firstName, lastName }),
     });
+    const tokens = await parseResponse(response);
+    saveTokens(tokens);
+    return extractUser(tokens.accessToken);
   },
 
   async logout(): Promise<void> {
-    await keycloak.logout({
-      redirectUri: window.location.origin + '/',
-    });
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+    }
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
   },
 
   getToken(): string | undefined {
-    return keycloak.token;
+    return getAccessToken();
   },
 
   async refreshToken(minValidity: number = 30): Promise<boolean> {
+    void minValidity;
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      return false;
+    }
     try {
-      const refreshed = await keycloak.updateToken(minValidity);
-      return refreshed;
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+      const tokens = await parseResponse(response);
+      saveTokens(tokens);
+      return true;
     } catch {
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
       return false;
     }
   },
 
   getCurrentUser(): User | null {
-    return extractUser();
+    return extractUser(getAccessToken());
   },
 
   isAuthenticated(): boolean {
-    return !!keycloak.authenticated;
-  },
-
-  onTokenExpired(callback: () => void): void {
-    keycloak.onTokenExpired = callback;
+    return !!getAccessToken();
   },
 };
 

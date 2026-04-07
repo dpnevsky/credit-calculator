@@ -4,8 +4,8 @@ import type { User } from '../services/auth.service';
 export interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: () => Promise<void>;
-  register: () => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
+  register: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   getToken: () => Promise<string | undefined>;

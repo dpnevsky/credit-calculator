@@ -27,6 +27,7 @@ public class GatewaySecurityConfig {
                     .authorizeExchange(exchanges -> exchanges
                             .pathMatchers("/actuator/**").permitAll()
                             .pathMatchers("/*/actuator/**").permitAll()
+                            .pathMatchers("/api/auth/**").permitAll()
                             .anyExchange().authenticated()
                     )
                     .oauth2ResourceServer(oauth2 -> oauth2

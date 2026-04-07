@@ -13,15 +13,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const currentUser = await AuthService.init();
         setUser(currentUser);
-
-        AuthService.onTokenExpired(async () => {
-          const refreshed = await AuthService.refreshToken();
-          if (refreshed) {
-            setUser(AuthService.getCurrentUser());
-          } else {
-            setUser(null);
-          }
-        });
       } catch (err) {
         console.error('Failed to initialize auth', err);
       } finally {
@@ -31,12 +22,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     initAuth();
   }, []);
 
-  const login = useCallback(async () => {
-    await AuthService.login();
+  const login = useCallback(async (username: string, password: string) => {
+    const currentUser = await AuthService.login(username, password);
+    setUser(currentUser);
   }, []);
 
-  const register = useCallback(async () => {
-    await AuthService.register();
+  const register = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
+    const currentUser = await AuthService.register(email, password, firstName, lastName);
+    setUser(currentUser);
   }, []);
 
   const logout = useCallback(async () => {

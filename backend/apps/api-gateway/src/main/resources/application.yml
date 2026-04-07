@@ -79,3 +79,11 @@ logging:
   level:
     org.springframework.cloud.gateway: DEBUG
     org.springframework.security: DEBUG
+
+auth:
+  keycloak:
+    base-url: http://localhost:8180
+    realm: credit-calculator
+    client-id: credit-calculator-app
+    admin-username: admin
+    admin-password: admin
