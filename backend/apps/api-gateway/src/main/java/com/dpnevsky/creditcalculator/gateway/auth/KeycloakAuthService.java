@@ -233,6 +233,10 @@ public class KeycloakAuthService {
                         .header("Authorization", "Bearer " + adminToken)
                         .retrieve()
                         .bodyToMono(MAP_TYPE)
-                        .map(secretResponse -> (String) secretResponse.get("value")));
+                        .flatMap(secretResponse -> {
+                            String secret = (String) secretResponse.get("value");
+                            return (secret != null && !secret.isBlank()) ? Mono.just(secret) : Mono.empty();
+                        }));
+
     }
 }
