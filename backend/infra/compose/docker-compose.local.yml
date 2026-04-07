@@ -111,6 +111,9 @@ services:
       KC_HEALTH_ENABLED: "true"
     command:
       - start-dev
+      - --import-realm
+    volumes:
+      - ../keycloak/realm:/opt/keycloak/data/import:ro
 
 volumes:
   postgres-application-data:
