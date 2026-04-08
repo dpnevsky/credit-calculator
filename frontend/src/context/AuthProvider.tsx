@@ -33,8 +33,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     firstName: string,
     lastName: string,
     middleName?: string,
+    birthDate?: string,
   ) => {
-    const currentUser = await AuthService.register(email, password, firstName, lastName, middleName);
+    const currentUser = await AuthService.register(email, password, firstName, lastName, middleName, birthDate);
     setUser(currentUser);
   }, []);
 
