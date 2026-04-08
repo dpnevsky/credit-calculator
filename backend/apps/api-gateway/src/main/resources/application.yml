@@ -28,7 +28,6 @@ spring:
             - AddRequestHeader=X-Forwarded-Prefix, /api
             - AddRequestHeader=X-Debug-Auth, allow
 
-
         - id: document-download
           uri: http://localhost:8081
           predicates:

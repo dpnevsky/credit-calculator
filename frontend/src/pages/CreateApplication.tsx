@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../services/api.service';
-import type { CreateApplicationRequest, PreliminaryOffer } from '../types/api';
+import type { CreateApplicationRequest, PreliminaryOffer, SubmitApplicationRequest } from '../types/api';
 import './Application.css';
 
 const CreateApplication: React.FC = () => {
@@ -10,6 +10,22 @@ const CreateApplication: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [offers, setOffers] = useState<PreliminaryOffer[] | null>(null);
   const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [scoringForm, setScoringForm] = useState<SubmitApplicationRequest>({
+    gender: 'MALE',
+    passportIssueDate: '',
+    passportIssueBranch: '',
+    maritalStatus: 'SINGLE',
+    dependentAmount: 0,
+    employmentStatus: 'EMPLOYED',
+    employerInn: '',
+    salary: 50000,
+    position: 'OTHER',
+    workExperienceTotal: 18,
+    workExperienceCurrent: 3,
+    accountNumber: '',
+    insuranceEnabled: false,
+    salaryClient: false,
+  });
 
   const [form, setForm] = useState<CreateApplicationRequest>({
     amount: 500000,
@@ -31,6 +47,22 @@ const CreateApplication: React.FC = () => {
     }));
   };
 
+  const handleScoringChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const target = e.target;
+    const { name } = target;
+    let value: string | number | boolean;
+
+    if (target instanceof HTMLInputElement && target.type === 'checkbox') {
+      value = target.checked;
+    } else if (target instanceof HTMLInputElement && target.type === 'number') {
+      value = target.value === '' ? 0 : Number(target.value);
+    } else {
+      value = target.value;
+    }
+
+    setScoringForm(prev => ({ ...prev, [name]: value }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -40,6 +72,7 @@ const CreateApplication: React.FC = () => {
       const result = await ApiService.createApplication(form);
       setApplicationId(result.applicationId);
       setOffers(result.offers);
+      sessionStorage.setItem(`cc_submit_draft_${result.applicationId}`, JSON.stringify(scoringForm));
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -62,6 +95,7 @@ const CreateApplication: React.FC = () => {
           <h2>Заявка создана</h2>
           <p className="app-id">ID: {applicationId}</p>
           <h3>Предварительные предложения</h3>
+          <p className="hint-text">Выберите одно из 4 предложений на следующем шаге в карточке заявки.</p>
           <div className="offers-grid">
             {offers.map((offer, index) => (
               <div key={index} className="offer-card">
@@ -162,6 +196,103 @@ const CreateApplication: React.FC = () => {
                 <label htmlFor="passportNumber">Номер</label>
                 <input type="text" id="passportNumber" name="passportNumber" value={form.passportNumber} onChange={handleChange} maxLength={6} pattern="\d{6}" required />
               </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Данные для скоринга (следующий шаг)</legend>
+            <div className="form-row">
+              <div className="form-field">
+                <label htmlFor="gender">Пол</label>
+                <select id="gender" name="gender" value={scoringForm.gender} onChange={handleScoringChange}>
+                  <option value="MALE">Мужской</option>
+                  <option value="FEMALE">Женский</option>
+                  <option value="NON_BINARY">Другой</option>
+                </select>
+              </div>
+              <div className="form-field">
+                <label htmlFor="maritalStatus">Семейное положение</label>
+                <select id="maritalStatus" name="maritalStatus" value={scoringForm.maritalStatus} onChange={handleScoringChange}>
+                  <option value="SINGLE">Не в браке</option>
+                  <option value="MARRIED">В браке</option>
+                  <option value="DIVORCED">Разведён(а)</option>
+                  <option value="WIDOWED">Вдовец/Вдова</option>
+                </select>
+              </div>
+              <div className="form-field">
+                <label htmlFor="dependentAmount">Иждивенцы</label>
+                <input type="number" id="dependentAmount" name="dependentAmount" value={scoringForm.dependentAmount} onChange={handleScoringChange} min={0} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-field">
+                <label htmlFor="passportIssueDate">Дата выдачи паспорта</label>
+                <input type="date" id="passportIssueDate" name="passportIssueDate" value={scoringForm.passportIssueDate} onChange={handleScoringChange} required />
+              </div>
+              <div className="form-field">
+                <label htmlFor="passportIssueBranch">Код подразделения</label>
+                <input type="text" id="passportIssueBranch" name="passportIssueBranch" value={scoringForm.passportIssueBranch} onChange={handleScoringChange} required />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-field">
+                <label htmlFor="employmentStatus">Статус занятости</label>
+                <select id="employmentStatus" name="employmentStatus" value={scoringForm.employmentStatus} onChange={handleScoringChange}>
+                  <option value="EMPLOYED">Работаю</option>
+                  <option value="UNEMPLOYED">Не работаю</option>
+                  <option value="SELF_EMPLOYED">Самозанятый</option>
+                  <option value="RETIRED">Пенсионер</option>
+                  <option value="BUSINESS_OWNER">Владелец бизнеса</option>
+                  <option value="STUDENT">Студент</option>
+                </select>
+              </div>
+              <div className="form-field">
+                <label htmlFor="position">Должность</label>
+                <select id="position" name="position" value={scoringForm.position} onChange={handleScoringChange}>
+                  <option value="TOP_MANAGER">Топ-менеджер</option>
+                  <option value="MID_MANAGER">Менеджер</option>
+                  <option value="JUNIOR_MANAGER">Младший менеджер</option>
+                  <option value="DEVELOPER">Разработчик</option>
+                  <option value="SALES">Продажи</option>
+                  <option value="ACCOUNTANT">Бухгалтер</option>
+                  <option value="HR">HR</option>
+                  <option value="OTHER">Другое</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-field">
+                <label htmlFor="employerInn">ИНН работодателя</label>
+                <input type="text" id="employerInn" name="employerInn" value={scoringForm.employerInn} onChange={handleScoringChange} maxLength={12} required />
+              </div>
+              <div className="form-field">
+                <label htmlFor="salary">Зарплата (₽)</label>
+                <input type="number" id="salary" name="salary" value={scoringForm.salary} onChange={handleScoringChange} min={0} step={1000} required />
+              </div>
+              <div className="form-field">
+                <label htmlFor="accountNumber">Номер счёта</label>
+                <input type="text" id="accountNumber" name="accountNumber" value={scoringForm.accountNumber} onChange={handleScoringChange} maxLength={20} required />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-field">
+                <label htmlFor="workExperienceTotal">Общий стаж (мес.)</label>
+                <input type="number" id="workExperienceTotal" name="workExperienceTotal" value={scoringForm.workExperienceTotal} onChange={handleScoringChange} min={0} required />
+              </div>
+              <div className="form-field">
+                <label htmlFor="workExperienceCurrent">Текущий стаж (мес.)</label>
+                <input type="number" id="workExperienceCurrent" name="workExperienceCurrent" value={scoringForm.workExperienceCurrent} onChange={handleScoringChange} min={0} required />
+              </div>
+            </div>
+            <div className="form-row checkbox-row">
+              <label className="checkbox-label">
+                <input type="checkbox" name="insuranceEnabled" checked={scoringForm.insuranceEnabled} onChange={handleScoringChange} />
+                Страхование жизни
+              </label>
+              <label className="checkbox-label">
+                <input type="checkbox" name="salaryClient" checked={scoringForm.salaryClient} onChange={handleScoringChange} />
+                Зарплатный клиент
+              </label>
             </div>
           </fieldset>
 
