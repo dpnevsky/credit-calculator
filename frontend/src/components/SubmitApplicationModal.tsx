@@ -7,9 +7,10 @@ interface Props {
   applicationId: string;
   onClose: () => void;
   onSuccess: () => void;
+  initialForm?: Partial<SubmitApplicationRequest>;
 }
 
-const SubmitApplicationModal: React.FC<Props> = ({ applicationId, onClose, onSuccess }) => {
+const SubmitApplicationModal: React.FC<Props> = ({ applicationId, onClose, onSuccess, initialForm }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +29,7 @@ const SubmitApplicationModal: React.FC<Props> = ({ applicationId, onClose, onSuc
     accountNumber: '',
     insuranceEnabled: false,
     salaryClient: false,
+    ...initialForm,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

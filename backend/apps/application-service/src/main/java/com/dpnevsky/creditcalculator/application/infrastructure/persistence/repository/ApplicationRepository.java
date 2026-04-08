@@ -3,7 +3,9 @@ package com.dpnevsky.creditcalculator.application.infrastructure.persistence.rep
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface ApplicationRepository extends JpaRepository<ApplicationEntity, UUID> {
+    List<ApplicationEntity> findAllByEmailOrderByCreatedAtDesc(String email);
 }

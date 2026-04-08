@@ -9,6 +9,7 @@ const Register: React.FC = () => {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [middleName, setMiddleName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -29,7 +30,7 @@ const Register: React.FC = () => {
     }
     setSubmitting(true);
     try {
-      await register(email.trim(), password, firstName.trim(), lastName.trim());
+      await register(email.trim(), password, firstName.trim(), lastName.trim(), middleName.trim());
       navigate('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось зарегистрироваться');
@@ -75,6 +76,16 @@ const Register: React.FC = () => {
               onChange={(event) => setLastName(event.target.value)}
               required
               autoComplete="family-name"
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="register-middlename">Отчество</label>
+            <input
+              id="register-middlename"
+              type="text"
+              value={middleName}
+              onChange={(event) => setMiddleName(event.target.value)}
+              autoComplete="additional-name"
             />
           </div>
           <div className="form-group">

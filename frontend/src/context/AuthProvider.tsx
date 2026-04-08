@@ -27,8 +27,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(currentUser);
   }, []);
 
-  const register = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
-    const currentUser = await AuthService.register(email, password, firstName, lastName);
+  const register = useCallback(async (
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    middleName?: string,
+  ) => {
+    const currentUser = await AuthService.register(email, password, firstName, lastName, middleName);
     setUser(currentUser);
   }, []);
 

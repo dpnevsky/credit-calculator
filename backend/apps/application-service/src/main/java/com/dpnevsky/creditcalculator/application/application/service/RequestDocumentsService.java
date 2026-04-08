@@ -15,6 +15,7 @@ import java.util.UUID;
 public class RequestDocumentsService {
 
     private static final String SCORING_COMPLETED_STATUS = "SCORING_COMPLETED";
+    private static final String OFFER_SELECTED_STATUS = "OFFER_SELECTED";
     private static final String DOCUMENTS_REQUESTED_STATUS = "DOCUMENTS_REQUESTED";
 
     private final ApplicationRepository applicationRepository;
@@ -43,9 +44,9 @@ public class RequestDocumentsService {
             );
         }
 
-        if (!SCORING_COMPLETED_STATUS.equals(currentStatus)) {
+        if (!SCORING_COMPLETED_STATUS.equals(currentStatus) && !OFFER_SELECTED_STATUS.equals(currentStatus)) {
             throw new IllegalStateException(
-                    "Documents can be requested only for applications with status SCORING_COMPLETED"
+                    "Documents can be requested only for applications with status SCORING_COMPLETED or OFFER_SELECTED"
             );
         }
 

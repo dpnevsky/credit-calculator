@@ -10,6 +10,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -89,14 +90,16 @@ public class KeycloakAuthService {
     }
 
     private Mono<Void> createUser(String adminToken, AuthDtos.RegisterRequest request) {
-        Map<String, Object> payload = Map.of(
-                "enabled", true,
-                "username", request.email(),
-                "email", request.email(),
-                "emailVerified", true,
-                "firstName", request.firstName(),
-                "lastName", request.lastName()
-        );
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("enabled", true);
+        payload.put("username", request.email());
+        payload.put("email", request.email());
+        payload.put("emailVerified", true);
+        payload.put("firstName", request.firstName());
+        payload.put("lastName", request.lastName());
+        if (request.middleName() != null && !request.middleName().isBlank()) {
+            payload.put("attributes", Map.of("middleName", List.of(request.middleName())));
+        }
 
         return webClient.post()
                 .uri("/admin/realms/{realm}/users", properties.realm())
@@ -233,6 +236,9 @@ public class KeycloakAuthService {
                         .header("Authorization", "Bearer " + adminToken)
                         .retrieve()
                         .bodyToMono(MAP_TYPE)
-                        .map(secretResponse -> (String) secretResponse.get("value")));
+                        .flatMap(secretResponse -> {
+                            String secret = (String) secretResponse.get("value");
+                            return (secret != null && !secret.isBlank()) ? Mono.just(secret) : Mono.empty();
+                        }));
     }
 }
