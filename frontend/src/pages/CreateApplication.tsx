@@ -7,6 +7,13 @@ import './Application.css';
 
 const APPLICATION_FORM_DRAFT_KEY = 'cc_create_application_form_draft';
 const SCORING_FORM_DRAFT_KEY = 'cc_create_application_scoring_draft';
+const REGISTRATION_PROFILE_KEY = 'cc_registration_profile';
+
+const getDefaultPassportIssueDate = (): string => {
+  const date = new Date();
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().slice(0, 10);
+};
 
 const CreateApplication: React.FC = () => {
   const navigate = useNavigate();
@@ -17,7 +24,7 @@ const CreateApplication: React.FC = () => {
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [scoringForm, setScoringForm] = useState<SubmitApplicationRequest>({
     gender: 'MALE',
-    passportIssueDate: '',
+    passportIssueDate: getDefaultPassportIssueDate(),
     passportIssueBranch: '',
     maritalStatus: 'SINGLE',
     dependentAmount: 0,
@@ -71,12 +78,23 @@ const CreateApplication: React.FC = () => {
     if (!user) {
       return;
     }
+    const registrationProfileRaw = localStorage.getItem(REGISTRATION_PROFILE_KEY);
+    let registrationProfile: Partial<CreateApplicationRequest> | null = null;
+    if (registrationProfileRaw) {
+      try {
+        registrationProfile = JSON.parse(registrationProfileRaw) as Partial<CreateApplicationRequest>;
+      } catch (parseError) {
+        console.warn('Невозможно прочитать профиль регистрации', parseError);
+      }
+    }
+
     setForm((prev) => ({
       ...prev,
-      email: prev.email || user.email || '',
-      firstName: prev.firstName || user.firstName || user.name || '',
-      lastName: prev.lastName || user.lastName || '',
-      middleName: prev.middleName || user.middleName || '',
+      email: prev.email || registrationProfile?.email || user.email || '',
+      firstName: prev.firstName || registrationProfile?.firstName || user.firstName || user.name || '',
+      lastName: prev.lastName || registrationProfile?.lastName || user.lastName || '',
+      middleName: prev.middleName || registrationProfile?.middleName || user.middleName || '',
+      birthDate: prev.birthDate || registrationProfile?.birthDate || user.birthDate || '',
     }));
   }, [user]);
 
@@ -267,12 +285,6 @@ const CreateApplication: React.FC = () => {
                   <option value="DIVORCED">Разведён(а)</option>
                   <option value="WIDOWED">Вдовец/Вдова</option>
                 </select>
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-field">
-                <label htmlFor="passportIssueDate">Дата выдачи паспорта</label>
-                <input type="date" id="passportIssueDate" name="passportIssueDate" value={scoringForm.passportIssueDate} onChange={handleScoringChange} required />
               </div>
             </div>
             <div className="form-row">

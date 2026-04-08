@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 
+const REGISTRATION_PROFILE_KEY = 'cc_registration_profile';
+
 const Register: React.FC = () => {
   const { register, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
@@ -10,6 +12,7 @@ const Register: React.FC = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [middleName, setMiddleName] = useState('');
+  const [birthDate, setBirthDate] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -30,7 +33,22 @@ const Register: React.FC = () => {
     }
     setSubmitting(true);
     try {
-      await register(email.trim(), password, firstName.trim(), lastName.trim(), middleName.trim());
+      const normalizedProfile = {
+        email: email.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        middleName: middleName.trim(),
+        birthDate,
+      };
+      localStorage.setItem(REGISTRATION_PROFILE_KEY, JSON.stringify(normalizedProfile));
+      await register(
+        normalizedProfile.email,
+        password,
+        normalizedProfile.firstName,
+        normalizedProfile.lastName,
+        normalizedProfile.middleName,
+        normalizedProfile.birthDate,
+      );
       navigate('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось зарегистрироваться');
@@ -86,6 +104,17 @@ const Register: React.FC = () => {
               value={middleName}
               onChange={(event) => setMiddleName(event.target.value)}
               autoComplete="additional-name"
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="register-birthdate">Дата рождения</label>
+            <input
+              id="register-birthdate"
+              type="date"
+              value={birthDate}
+              onChange={(event) => setBirthDate(event.target.value)}
+              required
+              autoComplete="bday"
             />
           </div>
           <div className="form-group">

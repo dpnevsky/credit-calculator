@@ -5,6 +5,7 @@ export interface User {
   firstName?: string;
   lastName?: string;
   middleName?: string;
+  birthDate?: string;
   token: string;
   roles: string[];
 }
@@ -60,6 +61,7 @@ function extractUser(token?: string): User | null {
     firstName: (payload.given_name as string) || '',
     lastName: (payload.family_name as string) || '',
     middleName: (payload.middle_name as string) || (payload.middleName as string) || '',
+    birthDate: (payload.birthdate as string) || (payload.birth_date as string) || '',
     token,
     roles: rolesRaw?.roles || [],
   };
@@ -114,11 +116,12 @@ const AuthService = {
     firstName: string,
     lastName: string,
     middleName?: string,
+    birthDate?: string,
   ): Promise<User | null> {
     const response = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, firstName, lastName, middleName }),
+      body: JSON.stringify({ email, password, firstName, lastName, middleName, birthDate }),
     });
     const tokens = await parseResponse(response);
     saveTokens(tokens);
