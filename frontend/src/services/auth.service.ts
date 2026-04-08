@@ -2,6 +2,9 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
+  middleName?: string;
   token: string;
   roles: string[];
 }
@@ -54,6 +57,9 @@ function extractUser(token?: string): User | null {
     id: (payload.sub as string) || 'unknown',
     email,
     name,
+    firstName: (payload.given_name as string) || '',
+    lastName: (payload.family_name as string) || '',
+    middleName: (payload.middle_name as string) || (payload.middleName as string) || '',
     token,
     roles: rolesRaw?.roles || [],
   };

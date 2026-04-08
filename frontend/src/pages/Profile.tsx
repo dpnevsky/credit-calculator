@@ -5,6 +5,7 @@ import './Auth.css';
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
+  const fullName = [user?.lastName, user?.firstName, user?.middleName].filter(Boolean).join(' ');
 
   return (
     <div className="profile-page">
@@ -17,8 +18,20 @@ const Profile: React.FC = () => {
               <span className="profile-value">{user.email}</span>
             </div>
             <div className="profile-field">
+              <span className="profile-label">ФИО</span>
+              <span className="profile-value">{fullName || user.name || 'Не указано'}</span>
+            </div>
+            <div className="profile-field">
               <span className="profile-label">Имя</span>
-              <span className="profile-value">{user.name || 'Не указано'}</span>
+              <span className="profile-value">{user.firstName || 'Не указано'}</span>
+            </div>
+            <div className="profile-field">
+              <span className="profile-label">Фамилия</span>
+              <span className="profile-value">{user.lastName || 'Не указано'}</span>
+            </div>
+            <div className="profile-field">
+              <span className="profile-label">Отчество</span>
+              <span className="profile-value">{user.middleName || 'Не указано'}</span>
             </div>
             <div style={{ marginTop: '16px' }}>
               <Link to="/applications" className="auth-button" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
