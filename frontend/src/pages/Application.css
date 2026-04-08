@@ -392,6 +392,11 @@
   margin-bottom: 20px;
 }
 
+.applications-grid {
+  display: grid;
+  gap: 16px;
+}
+
 .search-row {
   display: flex;
   gap: 12px;

@@ -102,11 +102,17 @@ const AuthService = {
     return extractUser(tokens.accessToken);
   },
 
-  async register(email: string, password: string, firstName: string, lastName: string): Promise<User | null> {
+  async register(
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    middleName?: string,
+  ): Promise<User | null> {
     const response = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, firstName, lastName }),
+      body: JSON.stringify({ email, password, firstName, lastName, middleName }),
     });
     const tokens = await parseResponse(response);
     saveTokens(tokens);

@@ -44,6 +44,11 @@ const ApiService = {
     return response.data;
   },
 
+  async getApplications(): Promise<ApplicationResponse[]> {
+    const response = await api.get<ApplicationResponse[]>('/applications');
+    return response.data;
+  },
+
   async submitApplication(applicationId: string, data: SubmitApplicationRequest): Promise<SubmitApplicationResponse> {
     const response = await api.post<SubmitApplicationResponse>(`/applications/${applicationId}/submit`, data);
     return response.data;
