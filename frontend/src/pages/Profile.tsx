@@ -23,7 +23,7 @@ const Profile: React.FC = () => {
             </div>
             <div className="profile-field">
               <span className="profile-label">Имя</span>
-              <span className="profile-value">{user.firstName || 'Не указано'}</span>
+              <span className="profile-value">{user.firstName || user.name || 'Не указано'}</span>
             </div>
             <div className="profile-field">
               <span className="profile-label">Фамилия</span>

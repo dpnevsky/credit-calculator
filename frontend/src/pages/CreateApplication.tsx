@@ -268,19 +268,11 @@ const CreateApplication: React.FC = () => {
                   <option value="WIDOWED">Вдовец/Вдова</option>
                 </select>
               </div>
-              <div className="form-field">
-                <label htmlFor="dependentAmount">Иждивенцы</label>
-                <input type="number" id="dependentAmount" name="dependentAmount" value={scoringForm.dependentAmount} onChange={handleScoringChange} min={0} />
-              </div>
             </div>
             <div className="form-row">
               <div className="form-field">
                 <label htmlFor="passportIssueDate">Дата выдачи паспорта</label>
                 <input type="date" id="passportIssueDate" name="passportIssueDate" value={scoringForm.passportIssueDate} onChange={handleScoringChange} required />
-              </div>
-              <div className="form-field">
-                <label htmlFor="passportIssueBranch">Код подразделения</label>
-                <input type="text" id="passportIssueBranch" name="passportIssueBranch" value={scoringForm.passportIssueBranch} onChange={handleScoringChange} required />
               </div>
             </div>
             <div className="form-row">
@@ -311,16 +303,8 @@ const CreateApplication: React.FC = () => {
             </div>
             <div className="form-row">
               <div className="form-field">
-                <label htmlFor="employerInn">ИНН работодателя</label>
-                <input type="text" id="employerInn" name="employerInn" value={scoringForm.employerInn} onChange={handleScoringChange} maxLength={12} required />
-              </div>
-              <div className="form-field">
                 <label htmlFor="salary">Зарплата (₽)</label>
                 <input type="number" id="salary" name="salary" value={scoringForm.salary} onChange={handleScoringChange} min={0} step={1000} required />
-              </div>
-              <div className="form-field">
-                <label htmlFor="accountNumber">Номер счёта</label>
-                <input type="text" id="accountNumber" name="accountNumber" value={scoringForm.accountNumber} onChange={handleScoringChange} maxLength={20} required />
               </div>
             </div>
             <div className="form-row">
