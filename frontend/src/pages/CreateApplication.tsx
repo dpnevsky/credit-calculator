@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../services/api.service';
 import type { CreateApplicationRequest, PreliminaryOffer, SubmitApplicationRequest } from '../types/api';
+import { useAuth } from '../context/AuthContext';
 import './Application.css';
+
+const APPLICATION_FORM_DRAFT_KEY = 'cc_create_application_form_draft';
+const SCORING_FORM_DRAFT_KEY = 'cc_create_application_scoring_draft';
 
 const CreateApplication: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offers, setOffers] = useState<PreliminaryOffer[] | null>(null);
@@ -38,6 +43,50 @@ const CreateApplication: React.FC = () => {
     passportSeries: '',
     passportNumber: '',
   });
+
+  useEffect(() => {
+    const savedFormDraft = localStorage.getItem(APPLICATION_FORM_DRAFT_KEY);
+    const savedScoringDraft = localStorage.getItem(SCORING_FORM_DRAFT_KEY);
+
+    if (savedFormDraft) {
+      try {
+        const parsed = JSON.parse(savedFormDraft) as Partial<CreateApplicationRequest>;
+        setForm((prev) => ({ ...prev, ...parsed }));
+      } catch (parseError) {
+        console.warn('Невозможно прочитать черновик формы заявки', parseError);
+      }
+    }
+
+    if (savedScoringDraft) {
+      try {
+        const parsed = JSON.parse(savedScoringDraft) as Partial<SubmitApplicationRequest>;
+        setScoringForm((prev) => ({ ...prev, ...parsed }));
+      } catch (parseError) {
+        console.warn('Невозможно прочитать черновик формы скоринга', parseError);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      email: prev.email || user.email || '',
+      firstName: prev.firstName || user.firstName || user.name || '',
+      lastName: prev.lastName || user.lastName || '',
+      middleName: prev.middleName || user.middleName || '',
+    }));
+  }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem(APPLICATION_FORM_DRAFT_KEY, JSON.stringify(form));
+  }, [form]);
+
+  useEffect(() => {
+    localStorage.setItem(SCORING_FORM_DRAFT_KEY, JSON.stringify(scoringForm));
+  }, [scoringForm]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -200,7 +249,7 @@ const CreateApplication: React.FC = () => {
           </fieldset>
 
           <fieldset>
-            <legend>Данные для скоринга (следующий шаг)</legend>
+            <legend>Данные для скоринга</legend>
             <div className="form-row">
               <div className="form-field">
                 <label htmlFor="gender">Пол</label>
@@ -219,19 +268,11 @@ const CreateApplication: React.FC = () => {
                   <option value="WIDOWED">Вдовец/Вдова</option>
                 </select>
               </div>
-              <div className="form-field">
-                <label htmlFor="dependentAmount">Иждивенцы</label>
-                <input type="number" id="dependentAmount" name="dependentAmount" value={scoringForm.dependentAmount} onChange={handleScoringChange} min={0} />
-              </div>
             </div>
             <div className="form-row">
               <div className="form-field">
                 <label htmlFor="passportIssueDate">Дата выдачи паспорта</label>
                 <input type="date" id="passportIssueDate" name="passportIssueDate" value={scoringForm.passportIssueDate} onChange={handleScoringChange} required />
-              </div>
-              <div className="form-field">
-                <label htmlFor="passportIssueBranch">Код подразделения</label>
-                <input type="text" id="passportIssueBranch" name="passportIssueBranch" value={scoringForm.passportIssueBranch} onChange={handleScoringChange} required />
               </div>
             </div>
             <div className="form-row">
@@ -262,16 +303,8 @@ const CreateApplication: React.FC = () => {
             </div>
             <div className="form-row">
               <div className="form-field">
-                <label htmlFor="employerInn">ИНН работодателя</label>
-                <input type="text" id="employerInn" name="employerInn" value={scoringForm.employerInn} onChange={handleScoringChange} maxLength={12} required />
-              </div>
-              <div className="form-field">
                 <label htmlFor="salary">Зарплата (₽)</label>
                 <input type="number" id="salary" name="salary" value={scoringForm.salary} onChange={handleScoringChange} min={0} step={1000} required />
-              </div>
-              <div className="form-field">
-                <label htmlFor="accountNumber">Номер счёта</label>
-                <input type="text" id="accountNumber" name="accountNumber" value={scoringForm.accountNumber} onChange={handleScoringChange} maxLength={20} required />
               </div>
             </div>
             <div className="form-row">
