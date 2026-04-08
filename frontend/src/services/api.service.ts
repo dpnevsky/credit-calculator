@@ -44,6 +44,14 @@ const ApiService = {
     return response.data;
   },
 
+  async getApplications(): Promise<ApplicationResponse[]> {
+    const currentUser = AuthService.getCurrentUser();
+    const response = await api.get<ApplicationResponse[]>('/applications', {
+      params: currentUser?.email ? { email: currentUser.email } : undefined,
+    });
+    return response.data;
+  },
+
   async submitApplication(applicationId: string, data: SubmitApplicationRequest): Promise<SubmitApplicationResponse> {
     const response = await api.post<SubmitApplicationResponse>(`/applications/${applicationId}/submit`, data);
     return response.data;

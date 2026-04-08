@@ -16,6 +16,7 @@ import com.dpnevsky.creditcalculator.application.application.service.CreateAppli
 import com.dpnevsky.creditcalculator.application.application.service.DownloadApplicationDocumentService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationDocumentsService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationScoringResultService;
+import com.dpnevsky.creditcalculator.application.application.service.GetApplicationsService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationService;
 import com.dpnevsky.creditcalculator.application.application.service.GetOffersService;
 import com.dpnevsky.creditcalculator.application.application.service.RequestDocumentsService;
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -43,6 +45,7 @@ public class ApplicationController {
 
     private final CreateApplicationService createApplicationService;
     private final GetApplicationService getApplicationService;
+    private final GetApplicationsService getApplicationsService;
     private final UpdateApplicationService updateApplicationService;
     private final SubmitApplicationService submitApplicationService;
     private final GetApplicationScoringResultService getApplicationScoringResultService;
@@ -55,6 +58,7 @@ public class ApplicationController {
     public ApplicationController(
             CreateApplicationService createApplicationService,
             GetApplicationService getApplicationService,
+            GetApplicationsService getApplicationsService,
             UpdateApplicationService updateApplicationService,
             SubmitApplicationService submitApplicationService,
             GetApplicationScoringResultService getApplicationScoringResultService,
@@ -66,6 +70,7 @@ public class ApplicationController {
     ) {
         this.createApplicationService = createApplicationService;
         this.getApplicationService = getApplicationService;
+        this.getApplicationsService = getApplicationsService;
         this.updateApplicationService = updateApplicationService;
         this.submitApplicationService = submitApplicationService;
         this.getApplicationScoringResultService = getApplicationScoringResultService;
@@ -92,6 +97,20 @@ public class ApplicationController {
     ) {
         validateDebugHeader(debugAuthHeader);
         return getApplicationService.getById(applicationId);
+    }
+
+    @GetMapping("/api/applications")
+    public List<GetApplicationResponse> getApplications(
+            @RequestHeader(value = "X-Debug-Auth", required = false) String debugAuthHeader,
+            @RequestHeader(value = "X-User-Email", required = false) String userEmailHeader,
+            @RequestParam(value = "email", required = false) String emailQueryParam
+    ) {
+        validateDebugHeader(debugAuthHeader);
+        String userEmail = (emailQueryParam != null && !emailQueryParam.isBlank()) ? emailQueryParam : userEmailHeader;
+        if (userEmail == null || userEmail.isBlank()) {
+            throw new IllegalStateException("Missing user email");
+        }
+        return getApplicationsService.getByEmail(userEmail);
     }
 
     @PatchMapping("/api/applications/{applicationId}")

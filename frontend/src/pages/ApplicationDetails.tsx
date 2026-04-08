@@ -6,6 +6,7 @@ import type {
   ScoringResultResponse,
   OfferResponse,
   DocumentResponse,
+  SubmitApplicationRequest,
 } from '../types/api';
 import SubmitApplicationModal from '../components/SubmitApplicationModal';
 import './Application.css';
@@ -46,6 +47,7 @@ const ApplicationDetails: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [submitDraft, setSubmitDraft] = useState<Partial<SubmitApplicationRequest> | undefined>(undefined);
 
   const loadData = useCallback(async () => {
     if (!applicationId) return;
@@ -88,6 +90,18 @@ const ApplicationDetails: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (!applicationId) return;
+    const draft = sessionStorage.getItem(`cc_submit_draft_${applicationId}`);
+    if (!draft) return;
+    try {
+      const parsed = JSON.parse(draft) as Partial<SubmitApplicationRequest>;
+      setSubmitDraft(parsed);
+    } catch {
+      setSubmitDraft(undefined);
+    }
+  }, [applicationId]);
+
   const handleSelectOffer = async (offerId: string) => {
     if (!applicationId) return;
     setActionLoading(true);
@@ -121,6 +135,9 @@ const ApplicationDetails: React.FC = () => {
   const handleSubmitComplete = async () => {
     setShowSubmitModal(false);
     setLoading(true);
+    if (applicationId) {
+      sessionStorage.removeItem(`cc_submit_draft_${applicationId}`);
+    }
     await loadData();
   };
 
@@ -160,6 +177,7 @@ const ApplicationDetails: React.FC = () => {
       {showSubmitModal && applicationId && (
         <SubmitApplicationModal
           applicationId={applicationId}
+          initialForm={submitDraft}
           onClose={() => setShowSubmitModal(false)}
           onSuccess={handleSubmitComplete}
         />
