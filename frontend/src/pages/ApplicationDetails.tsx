@@ -48,6 +48,9 @@ const ApplicationDetails: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [submitDraft, setSubmitDraft] = useState<Partial<SubmitApplicationRequest> | undefined>(undefined);
+  const [submittedScoring, setSubmittedScoring] = useState<Partial<SubmitApplicationRequest> | null>(null);
+  const [previewOfferId, setPreviewOfferId] = useState<string | null>(null);
+  const [paymentType, setPaymentType] = useState<'ANNUITY' | 'DIFFERENTIAL'>('ANNUITY');
 
   const loadData = useCallback(async () => {
     if (!applicationId) return;
@@ -70,7 +73,15 @@ const ApplicationDetails: React.FC = () => {
       }
 
       try {
-        const docs = await ApiService.getDocuments(applicationId);
+        let docs = await ApiService.getDocuments(applicationId);
+        if (app.status === 'OFFER_SELECTED' && docs.length === 0) {
+          try {
+            await ApiService.requestDocuments(applicationId);
+            docs = await ApiService.getDocuments(applicationId);
+          } catch {
+            // генерация может быть асинхронной
+          }
+        }
         setDocuments(docs);
       } catch {
         /* no documents yet */
@@ -102,11 +113,52 @@ const ApplicationDetails: React.FC = () => {
     }
   }, [applicationId]);
 
+  useEffect(() => {
+    if (!applicationId) return;
+    const submittedRaw = localStorage.getItem(`cc_submitted_scoring_${applicationId}`);
+    if (!submittedRaw) {
+      setSubmittedScoring(null);
+      return;
+    }
+    try {
+      setSubmittedScoring(JSON.parse(submittedRaw) as Partial<SubmitApplicationRequest>);
+    } catch {
+      setSubmittedScoring(null);
+    }
+  }, [applicationId]);
+
+  useEffect(() => {
+    if (!applicationId) return;
+    const paymentTypeRaw = localStorage.getItem(`cc_payment_type_${applicationId}`);
+    if (paymentTypeRaw === 'DIFFERENTIAL' || paymentTypeRaw === 'ANNUITY') {
+      setPaymentType(paymentTypeRaw);
+    }
+  }, [applicationId]);
+
+  useEffect(() => {
+    if (!offers.length) return;
+    const selected = offers.find((offer) => offer.selected);
+    setPreviewOfferId((prev) => prev ?? selected?.offerId ?? offers[0].offerId);
+  }, [offers]);
+
   const handleSelectOffer = async (offerId: string) => {
     if (!applicationId) return;
+    const selectedOffer = offers.find((offer) => offer.offerId === offerId);
+    if (!selectedOffer) return;
+    const isConfirmed = window.confirm(
+      `Подтвердите выбор предложения ${selectedOffer.rate}% на ${selectedOffer.termMonths} мес.`,
+    );
+    if (!isConfirmed) return;
+
     setActionLoading(true);
     try {
       await ApiService.selectOffer(applicationId, offerId);
+      localStorage.setItem(`cc_payment_type_${applicationId}`, paymentType);
+      try {
+        await ApiService.requestDocuments(applicationId);
+      } catch {
+        // генерация документов может занять время; пробуем загрузить на следующем рефреше
+      }
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -117,23 +169,9 @@ const ApplicationDetails: React.FC = () => {
     }
   };
 
-  const handleRequestDocuments = async () => {
-    if (!applicationId) return;
-    setActionLoading(true);
-    try {
-      await ApiService.requestDocuments(applicationId);
-      await loadData();
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      }
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleSubmitComplete = async () => {
+  const handleSubmitComplete = async (submittedForm: SubmitApplicationRequest) => {
     setShowSubmitModal(false);
+    setSubmittedScoring(submittedForm);
     setLoading(true);
     if (applicationId) {
       sessionStorage.removeItem(`cc_submit_draft_${applicationId}`);
@@ -147,6 +185,90 @@ const ApplicationDetails: React.FC = () => {
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  const getPaymentTypeLabel = (type: 'ANNUITY' | 'DIFFERENTIAL') =>
+    type === 'ANNUITY' ? 'Аннуитетный' : 'Дифференцированный';
+
+  type PaymentRow = {
+    month: number;
+    payment: number;
+    principal: number;
+    interest: number;
+    balance: number;
+  };
+
+  const buildPaymentSchedule = (offer: OfferResponse, scheduleType: 'ANNUITY' | 'DIFFERENTIAL'): PaymentRow[] => {
+    const rows: PaymentRow[] = [];
+    const principal = offer.totalAmount;
+    const months = offer.termMonths;
+    const monthlyRate = offer.rate / 12 / 100;
+    let balance = principal;
+
+    if (scheduleType === 'ANNUITY') {
+      const annuityPayment =
+        monthlyRate === 0
+          ? principal / months
+          : principal * (monthlyRate / (1 - (1 + monthlyRate) ** (-months)));
+      for (let month = 1; month <= months; month += 1) {
+        const interest = balance * monthlyRate;
+        const principalPart = annuityPayment - interest;
+        balance = Math.max(0, balance - principalPart);
+        rows.push({
+          month,
+          payment: annuityPayment,
+          principal: principalPart,
+          interest,
+          balance,
+        });
+      }
+      return rows;
+    }
+
+    const principalPart = principal / months;
+    for (let month = 1; month <= months; month += 1) {
+      const interest = balance * monthlyRate;
+      const payment = principalPart + interest;
+      balance = Math.max(0, balance - principalPart);
+      rows.push({
+        month,
+        payment,
+        principal: principalPart,
+        interest,
+        balance,
+      });
+    }
+    return rows;
+  };
+
+  const previewOffer = offers.find((offer) => offer.offerId === previewOfferId) ?? null;
+  const previewSchedule = previewOffer ? buildPaymentSchedule(previewOffer, paymentType) : [];
+
+  const downloadContract = () => {
+    if (!application || !previewOffer) return;
+    const lines = [
+      `Кредитный договор по заявке ${application.applicationId}`,
+      `Заемщик: ${application.lastName} ${application.firstName} ${application.middleName || ''}`.trim(),
+      `Email: ${application.email}`,
+      `Сумма кредита: ${formatMoney(previewOffer.totalAmount)}`,
+      `Срок: ${previewOffer.termMonths} мес.`,
+      `Ставка: ${previewOffer.rate}%`,
+      `Тип платежа: ${getPaymentTypeLabel(paymentType)}`,
+      '',
+      'График платежей:',
+      'Месяц;Платеж;Проценты;Тело кредита;Остаток',
+      ...previewSchedule.map((row) =>
+        `${row.month};${row.payment.toFixed(2)};${row.interest.toFixed(2)};${row.principal.toFixed(2)};${row.balance.toFixed(2)}`),
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `credit-contract-${application.applicationId.slice(0, 8)}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   if (loading) {
@@ -199,11 +321,6 @@ const ApplicationDetails: React.FC = () => {
           {(application.status === 'SCORING_COMPLETED' || application.status === 'SCORING_APPROVED') && offers.length > 0 && !offers.some(o => o.selected) && (
             <span className="hint-text">Выберите подходящее предложение ниже</span>
           )}
-          {application.status === 'OFFER_SELECTED' && (
-            <button className="btn btn-primary" onClick={handleRequestDocuments} disabled={actionLoading}>
-              {actionLoading ? 'Запрос...' : 'Запросить документы'}
-            </button>
-          )}
         </div>
       </div>
 
@@ -239,6 +356,34 @@ const ApplicationDetails: React.FC = () => {
             <span className="info-label">Создана</span>
             <span className="info-value">{formatDate(application.createdAt)}</span>
           </div>
+          {submittedScoring && (
+            <>
+              <div className="info-item">
+                <span className="info-label">Пол</span>
+                <span className="info-value">{submittedScoring.gender || 'Не указано'}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Семейное положение</span>
+                <span className="info-value">{submittedScoring.maritalStatus || 'Не указано'}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Статус занятости</span>
+                <span className="info-value">{submittedScoring.employmentStatus || 'Не указано'}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Должность</span>
+                <span className="info-value">{submittedScoring.position || 'Не указано'}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Зарплата</span>
+                <span className="info-value">{submittedScoring.salary ? formatMoney(submittedScoring.salary) : 'Не указано'}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Тип платежа</span>
+                <span className="info-value">{getPaymentTypeLabel(paymentType)}</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -295,9 +440,26 @@ const ApplicationDetails: React.FC = () => {
       {offers.length > 0 && (
         <div className="card">
           <h3>Кредитные предложения</h3>
+          <div className="form-row">
+            <div className="form-field">
+              <label htmlFor="paymentType">Вид платежа для просмотра графика</label>
+              <select
+                id="paymentType"
+                value={paymentType}
+                onChange={(event) => setPaymentType(event.target.value as 'ANNUITY' | 'DIFFERENTIAL')}
+              >
+                <option value="ANNUITY">Аннуитетный</option>
+                <option value="DIFFERENTIAL">Дифференцированный</option>
+              </select>
+            </div>
+          </div>
           <div className="offers-grid">
             {offers.map((offer) => (
-              <div key={offer.offerId} className={`offer-card ${offer.selected ? 'offer-selected' : ''}`}>
+              <div
+                key={offer.offerId}
+                className={`offer-card ${offer.selected ? 'offer-selected' : ''} ${previewOfferId === offer.offerId ? 'offer-preview' : ''}`}
+                onClick={() => setPreviewOfferId(offer.offerId)}
+              >
                 <div className="offer-header">
                   <span className="offer-rate">{offer.rate}%</span>
                   <span className="offer-label">годовых</span>
@@ -324,7 +486,10 @@ const ApplicationDetails: React.FC = () => {
                 {!offer.selected && (application.status === 'SCORING_COMPLETED' || application.status === 'SCORING_APPROVED' || application.status === 'DRAFT') && (
                   <button
                     className="btn btn-primary btn-full"
-                    onClick={() => handleSelectOffer(offer.offerId)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleSelectOffer(offer.offerId);
+                    }}
                     disabled={actionLoading}
                   >
                     Выбрать
@@ -333,6 +498,35 @@ const ApplicationDetails: React.FC = () => {
               </div>
             ))}
           </div>
+          {previewOffer && (
+            <div className="card" style={{ marginTop: '16px', marginBottom: 0 }}>
+              <h3>График платежей: {getPaymentTypeLabel(paymentType)}</h3>
+              <div className="schedule-table-wrapper">
+                <table className="schedule-table">
+                  <thead>
+                    <tr>
+                      <th>Месяц</th>
+                      <th>Платёж</th>
+                      <th>Проценты</th>
+                      <th>Тело кредита</th>
+                      <th>Остаток</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewSchedule.map((row) => (
+                      <tr key={row.month}>
+                        <td>{row.month}</td>
+                        <td>{formatMoney(row.payment)}</td>
+                        <td>{formatMoney(row.interest)}</td>
+                        <td>{formatMoney(row.principal)}</td>
+                        <td>{formatMoney(row.balance)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -340,6 +534,13 @@ const ApplicationDetails: React.FC = () => {
       {documents.length > 0 && (
         <div className="card">
           <h3>Документы</h3>
+          {previewOffer && (
+            <div style={{ marginBottom: '12px' }}>
+              <button type="button" className="btn btn-primary" onClick={downloadContract}>
+                Скачать договор с графиком платежей
+              </button>
+            </div>
+          )}
           <div className="documents-list">
             {documents.map((doc) => (
               <div key={doc.documentId} className="document-item">

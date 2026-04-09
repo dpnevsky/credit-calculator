@@ -1,23 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../services/api.service';
-import type { CreateApplicationRequest, PreliminaryOffer, SubmitApplicationRequest } from '../types/api';
+import type { CreateApplicationRequest, SubmitApplicationRequest } from '../types/api';
 import { useAuth } from '../context/AuthContext';
 import './Application.css';
 
 const APPLICATION_FORM_DRAFT_KEY = 'cc_create_application_form_draft';
 const SCORING_FORM_DRAFT_KEY = 'cc_create_application_scoring_draft';
+const REGISTRATION_PROFILE_KEY = 'cc_registration_profile';
+
+const getDefaultPassportIssueDate = (): string => {
+  const date = new Date();
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().slice(0, 10);
+};
 
 const CreateApplication: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [offers, setOffers] = useState<PreliminaryOffer[] | null>(null);
-  const [applicationId, setApplicationId] = useState<string | null>(null);
   const [scoringForm, setScoringForm] = useState<SubmitApplicationRequest>({
     gender: 'MALE',
-    passportIssueDate: '',
+    passportIssueDate: getDefaultPassportIssueDate(),
     passportIssueBranch: '',
     maritalStatus: 'SINGLE',
     dependentAmount: 0,
@@ -71,12 +76,23 @@ const CreateApplication: React.FC = () => {
     if (!user) {
       return;
     }
+    const registrationProfileRaw = localStorage.getItem(REGISTRATION_PROFILE_KEY);
+    let registrationProfile: Partial<CreateApplicationRequest> | null = null;
+    if (registrationProfileRaw) {
+      try {
+        registrationProfile = JSON.parse(registrationProfileRaw) as Partial<CreateApplicationRequest>;
+      } catch (parseError) {
+        console.warn('Невозможно прочитать профиль регистрации', parseError);
+      }
+    }
+
     setForm((prev) => ({
       ...prev,
-      email: prev.email || user.email || '',
-      firstName: prev.firstName || user.firstName || user.name || '',
-      lastName: prev.lastName || user.lastName || '',
-      middleName: prev.middleName || user.middleName || '',
+      email: prev.email || registrationProfile?.email || user.email || '',
+      firstName: prev.firstName || registrationProfile?.firstName || user.firstName || user.name || '',
+      lastName: prev.lastName || registrationProfile?.lastName || user.lastName || '',
+      middleName: prev.middleName || registrationProfile?.middleName || user.middleName || '',
+      birthDate: prev.birthDate || registrationProfile?.birthDate || user.birthDate || '',
     }));
   }, [user]);
 
@@ -119,9 +135,8 @@ const CreateApplication: React.FC = () => {
 
     try {
       const result = await ApiService.createApplication(form);
-      setApplicationId(result.applicationId);
-      setOffers(result.offers);
       sessionStorage.setItem(`cc_submit_draft_${result.applicationId}`, JSON.stringify(scoringForm));
+      navigate('/applications');
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -132,59 +147,6 @@ const CreateApplication: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const formatMoney = (value: number) =>
-    new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(value);
-
-  if (offers && applicationId) {
-    return (
-      <div className="page-container">
-        <div className="card success-card">
-          <div className="success-icon">&#10003;</div>
-          <h2>Заявка создана</h2>
-          <p className="app-id">ID: {applicationId}</p>
-          <h3>Предварительные предложения</h3>
-          <p className="hint-text">Выберите одно из 4 предложений на следующем шаге в карточке заявки.</p>
-          <div className="offers-grid">
-            {offers.map((offer, index) => (
-              <div key={index} className="offer-card">
-                <div className="offer-header">
-                  <span className="offer-rate">{offer.rate}%</span>
-                  <span className="offer-label">годовых</span>
-                </div>
-                <div className="offer-details">
-                  <div className="offer-row">
-                    <span>Сумма кредита</span>
-                    <strong>{formatMoney(offer.totalAmount)}</strong>
-                  </div>
-                  <div className="offer-row">
-                    <span>Ежемесячный платёж</span>
-                    <strong>{formatMoney(offer.monthlyPayment)}</strong>
-                  </div>
-                  <div className="offer-row">
-                    <span>Срок</span>
-                    <strong>{offer.termMonths} мес.</strong>
-                  </div>
-                  <div className="offer-tags">
-                    {offer.insuranceEnabled && <span className="tag tag-insurance">Страховка</span>}
-                    {offer.salaryClient && <span className="tag tag-salary">Зарплатный клиент</span>}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="action-buttons">
-            <button className="btn btn-primary" onClick={() => navigate(`/applications/${applicationId}`)}>
-              Перейти к заявке
-            </button>
-            <button className="btn btn-secondary" onClick={() => { setOffers(null); setApplicationId(null); }}>
-              Создать ещё
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="page-container">
@@ -267,12 +229,6 @@ const CreateApplication: React.FC = () => {
                   <option value="DIVORCED">Разведён(а)</option>
                   <option value="WIDOWED">Вдовец/Вдова</option>
                 </select>
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-field">
-                <label htmlFor="passportIssueDate">Дата выдачи паспорта</label>
-                <input type="date" id="passportIssueDate" name="passportIssueDate" value={scoringForm.passportIssueDate} onChange={handleScoringChange} required />
               </div>
             </div>
             <div className="form-row">

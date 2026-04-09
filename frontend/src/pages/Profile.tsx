@@ -5,7 +5,7 @@ import './Auth.css';
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
-  const fullName = [user?.lastName, user?.firstName, user?.middleName].filter(Boolean).join(' ');
+  const fullName = [user?.lastName, user?.firstName].filter(Boolean).join(' ');
 
   return (
     <div className="profile-page">
@@ -14,24 +14,12 @@ const Profile: React.FC = () => {
         {user && (
           <div className="profile-info">
             <div className="profile-field">
-              <span className="profile-label">Email</span>
-              <span className="profile-value">{user.email}</span>
-            </div>
-            <div className="profile-field">
               <span className="profile-label">ФИО</span>
               <span className="profile-value">{fullName || user.name || 'Не указано'}</span>
             </div>
             <div className="profile-field">
-              <span className="profile-label">Имя</span>
-              <span className="profile-value">{user.firstName || user.name || 'Не указано'}</span>
-            </div>
-            <div className="profile-field">
-              <span className="profile-label">Фамилия</span>
-              <span className="profile-value">{user.lastName || 'Не указано'}</span>
-            </div>
-            <div className="profile-field">
-              <span className="profile-label">Отчество</span>
-              <span className="profile-value">{user.middleName || 'Не указано'}</span>
+              <span className="profile-label">Email</span>
+              <span className="profile-value">{user.email}</span>
             </div>
             <div style={{ marginTop: '16px' }}>
               <Link to="/applications" className="auth-button" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
