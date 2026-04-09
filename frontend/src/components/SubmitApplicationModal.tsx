@@ -6,7 +6,7 @@ import './SubmitApplicationModal.css';
 interface Props {
   applicationId: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (submittedForm: SubmitApplicationRequest) => void;
   initialForm?: Partial<SubmitApplicationRequest>;
 }
 
@@ -55,7 +55,8 @@ const SubmitApplicationModal: React.FC<Props> = ({ applicationId, onClose, onSuc
 
     try {
       await ApiService.submitApplication(applicationId, form);
-      onSuccess();
+      localStorage.setItem(`cc_submitted_scoring_${applicationId}`, JSON.stringify(form));
+      onSuccess(form);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);

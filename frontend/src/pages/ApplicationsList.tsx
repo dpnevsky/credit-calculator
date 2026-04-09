@@ -79,7 +79,7 @@ const ApplicationsList: React.FC = () => {
                 onClick={() => navigate(`/applications/${application.applicationId}`)}
               >
                 <div className="app-card-header">
-                  <span className="app-card-id">#{application.applicationId.slice(0, 8)}</span>
+                  <span className="app-card-id">Номер заявки: {application.applicationId.slice(0, 8)}</span>
                   <span className="status-badge" style={{ backgroundColor: statusColors[application.status] || '#6c757d' }}>
                     {statusLabels[application.status] || application.status}
                   </span>

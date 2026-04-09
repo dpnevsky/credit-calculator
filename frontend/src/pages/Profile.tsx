@@ -5,7 +5,7 @@ import './Auth.css';
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
-  const fullName = [user?.lastName, user?.firstName, user?.middleName].filter(Boolean).join(' ');
+  const fullName = [user?.lastName, user?.firstName].filter(Boolean).join(' ');
 
   return (
     <div className="profile-page">
