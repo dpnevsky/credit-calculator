@@ -10,15 +10,20 @@ import java.util.UUID;
 @Service
 public class DownloadApplicationDocumentService {
 
+    private static final String CONTRACT_FILE_NAME = "credit-agreement-payment-schedule.pdf";
+
     private final ApplicationDocumentRepository applicationDocumentRepository;
     private final DocumentDownloadClient documentDownloadClient;
+    private final GenerateApplicationContractPdfService generateApplicationContractPdfService;
 
     public DownloadApplicationDocumentService(
             ApplicationDocumentRepository applicationDocumentRepository,
-            DocumentDownloadClient documentDownloadClient
+            DocumentDownloadClient documentDownloadClient,
+            GenerateApplicationContractPdfService generateApplicationContractPdfService
     ) {
         this.applicationDocumentRepository = applicationDocumentRepository;
         this.documentDownloadClient = documentDownloadClient;
+        this.generateApplicationContractPdfService = generateApplicationContractPdfService;
     }
 
     public DownloadedApplicationDocument downloadByDocumentId(UUID documentId) {
@@ -26,6 +31,22 @@ public class DownloadApplicationDocumentService {
                 .orElseThrow(() -> new IllegalStateException(
                         "Application document not found. documentId=" + documentId
                 ));
+
+        if (generateApplicationContractPdfService.supports(
+                applicationDocument.getDocumentType(),
+                applicationDocument.getFormat()
+        )) {
+            return new DownloadedApplicationDocument(
+                    applicationDocument.getApplicationId(),
+                    applicationDocument.getDocumentId(),
+                    CONTRACT_FILE_NAME,
+                    applicationDocument.getMimeType(),
+                    generateApplicationContractPdfService.generate(
+                            applicationDocument.getApplicationId(),
+                            applicationDocument.getGeneratedAt()
+                    )
+            );
+        }
 
         DocumentDownloadClient.DownloadedDocument downloadedDocument =
                 documentDownloadClient.downloadByDocumentId(documentId);

@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 
 .env
+.vite-dev.log
+.vite-dev.err.log

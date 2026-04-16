@@ -82,6 +82,33 @@
   color: #4a5568;
 }
 
+.payment-type-description {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.payment-type-card {
+  padding: 14px 16px;
+  border: 1px solid #dbe5f0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f3f7fb 100%);
+}
+
+.payment-type-card h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: #1e3a5f;
+}
+
+.payment-type-card p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #516074;
+}
+
 .loan-form-actions {
   display: flex;
   gap: 12px;
@@ -128,6 +155,10 @@
 
   .payment-type-group {
     flex-direction: column;
+  }
+
+  .payment-type-description {
+    grid-template-columns: 1fr;
   }
 
   .loan-form-actions {

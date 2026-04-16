@@ -5,6 +5,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":libs:domain:calculator-engine"))
     implementation(project(":libs:contracts:scoring-internal-api"))
 
     implementation("org.springframework.boot:spring-boot-starter-web")

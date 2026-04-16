@@ -2,31 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../services/api.service';
 import type { ApplicationResponse } from '../types/api';
+import {
+  getApplicationRejectionReasons,
+  getApplicationStatusColor,
+  getApplicationStatusLabel,
+  isRejectedApplicationStatus,
+} from '../utils/applicationStatus';
 import './Application.css';
-
-const statusLabels: Record<string, string> = {
-  DRAFT: 'Черновик',
-  PRESCORING_FAILED: 'Прескоринг не пройден',
-  SUBMITTED: 'Отправлена',
-  SCORING_COMPLETED: 'Скоринг завершён',
-  SCORING_APPROVED: 'Одобрена',
-  SCORING_REJECTED: 'Отклонена',
-  OFFER_SELECTED: 'Оффер выбран',
-  DOCUMENTS_REQUESTED: 'Документы запрошены',
-  DOCUMENTS_READY: 'Документы готовы',
-};
-
-const statusColors: Record<string, string> = {
-  DRAFT: '#6c757d',
-  PRESCORING_FAILED: '#dc3545',
-  SUBMITTED: '#17a2b8',
-  SCORING_COMPLETED: '#28a745',
-  SCORING_APPROVED: '#28a745',
-  SCORING_REJECTED: '#dc3545',
-  OFFER_SELECTED: '#007bff',
-  DOCUMENTS_REQUESTED: '#ffc107',
-  DOCUMENTS_READY: '#28a745',
-};
 
 const ApplicationsList: React.FC = () => {
   const navigate = useNavigate();
@@ -48,7 +30,7 @@ const ApplicationsList: React.FC = () => {
       }
     };
 
-    loadApplications();
+    void loadApplications();
   }, []);
 
   const formatMoney = (value: number) =>
@@ -72,41 +54,53 @@ const ApplicationsList: React.FC = () => {
 
         {!loading && !error && applications.length > 0 && (
           <div className="applications-grid">
-            {applications.map((application) => (
-              <div
-                key={application.applicationId}
-                className="application-card"
-                onClick={() => navigate(`/applications/${application.applicationId}`)}
-              >
-                <div className="app-card-header">
-                  <span className="app-card-id">Номер заявки: {application.applicationId.slice(0, 8)}</span>
-                  <span className="status-badge" style={{ backgroundColor: statusColors[application.status] || '#6c757d' }}>
-                    {statusLabels[application.status] || application.status}
-                  </span>
+            {applications.map((application) => {
+              const rejectionReasons = getApplicationRejectionReasons(application.status);
+
+              return (
+                <div
+                  key={application.applicationId}
+                  className="application-card"
+                  onClick={() => navigate(`/applications/${application.applicationId}`)}
+                >
+                  <div className="app-card-header">
+                    <span className="app-card-id">Номер заявки: {application.applicationId.slice(0, 8)}</span>
+                    <span
+                      className="status-badge"
+                      style={{ backgroundColor: getApplicationStatusColor(application.status, application.applicationId) }}
+                    >
+                      {getApplicationStatusLabel(application.status, application.applicationId)}
+                    </span>
+                  </div>
+                  <div className="app-card-body">
+                    <div className="app-card-row">
+                      <span>ФИО</span>
+                      <strong>{application.lastName} {application.firstName} {application.middleName || ''}</strong>
+                    </div>
+                    <div className="app-card-row">
+                      <span>Сумма</span>
+                      <strong>{formatMoney(application.amount)}</strong>
+                    </div>
+                    <div className="app-card-row">
+                      <span>Срок</span>
+                      <strong>{application.termMonths} мес.</strong>
+                    </div>
+                    <div className="app-card-row">
+                      <span>Создана</span>
+                      <strong>{formatDate(application.createdAt)}</strong>
+                    </div>
+                  </div>
+                  {isRejectedApplicationStatus(application.status) && rejectionReasons.length > 0 && (
+                    <div className="error-banner app-card-rejection">
+                      Причина отказа: {rejectionReasons[0]}
+                    </div>
+                  )}
+                  <div className="app-card-footer">
+                    <span className="link-text">Подробнее &rarr;</span>
+                  </div>
                 </div>
-                <div className="app-card-body">
-                  <div className="app-card-row">
-                    <span>ФИО</span>
-                    <strong>{application.lastName} {application.firstName} {application.middleName || ''}</strong>
-                  </div>
-                  <div className="app-card-row">
-                    <span>Сумма</span>
-                    <strong>{formatMoney(application.amount)}</strong>
-                  </div>
-                  <div className="app-card-row">
-                    <span>Срок</span>
-                    <strong>{application.termMonths} мес.</strong>
-                  </div>
-                  <div className="app-card-row">
-                    <span>Создана</span>
-                    <strong>{formatDate(application.createdAt)}</strong>
-                  </div>
-                </div>
-                <div className="app-card-footer">
-                  <span className="link-text">Подробнее &rarr;</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

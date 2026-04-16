@@ -17,6 +17,8 @@ public class RequestDocumentsService {
     private static final String SCORING_COMPLETED_STATUS = "SCORING_COMPLETED";
     private static final String OFFER_SELECTED_STATUS = "OFFER_SELECTED";
     private static final String DOCUMENTS_REQUESTED_STATUS = "DOCUMENTS_REQUESTED";
+    private static final String DOCUMENTS_READY_STATUS = "DOCUMENTS_READY";
+    private static final String DEFAULT_PAYMENT_TYPE = "ANNUITY";
 
     private final ApplicationRepository applicationRepository;
     private final DocumentCommandPublisher documentCommandPublisher;
@@ -30,27 +32,23 @@ public class RequestDocumentsService {
     }
 
     @Transactional
-    public RequestDocumentsResponse requestDocuments(UUID applicationId) {
+    public RequestDocumentsResponse requestDocuments(UUID applicationId, String paymentType) {
         ApplicationEntity existingApplication = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new ApplicationNotFoundException(applicationId));
 
         String currentStatus = existingApplication.getStatus();
 
-        if (DOCUMENTS_REQUESTED_STATUS.equals(currentStatus)) {
-            return new RequestDocumentsResponse(
-                    applicationId,
-                    DOCUMENTS_REQUESTED_STATUS,
-                    "Document generation has already been requested"
-            );
-        }
-
-        if (!SCORING_COMPLETED_STATUS.equals(currentStatus) && !OFFER_SELECTED_STATUS.equals(currentStatus)) {
+        if (!SCORING_COMPLETED_STATUS.equals(currentStatus)
+                && !OFFER_SELECTED_STATUS.equals(currentStatus)
+                && !DOCUMENTS_REQUESTED_STATUS.equals(currentStatus)
+                && !DOCUMENTS_READY_STATUS.equals(currentStatus)) {
             throw new IllegalStateException(
-                    "Documents can be requested only for applications with status SCORING_COMPLETED or OFFER_SELECTED"
+                    "Documents can be requested only for applications with status SCORING_COMPLETED, OFFER_SELECTED, DOCUMENTS_REQUESTED or DOCUMENTS_READY"
             );
         }
 
         OffsetDateTime now = OffsetDateTime.now();
+        String resolvedPaymentType = resolvePaymentType(existingApplication, paymentType);
 
         ApplicationEntity updatedApplication = new ApplicationEntity(
                 existingApplication.getId(),
@@ -65,7 +63,8 @@ public class RequestDocumentsService {
                 existingApplication.getPassportSeries(),
                 existingApplication.getPassportNumber(),
                 existingApplication.getCreatedAt(),
-                now
+                now,
+                resolvedPaymentType
         );
 
         applicationRepository.save(updatedApplication);
@@ -77,5 +76,15 @@ public class RequestDocumentsService {
                 DOCUMENTS_REQUESTED_STATUS,
                 "Document generation has been requested"
         );
+    }
+
+    private String resolvePaymentType(ApplicationEntity application, String requestedPaymentType) {
+        if (requestedPaymentType != null && !requestedPaymentType.isBlank()) {
+            return requestedPaymentType;
+        }
+        if (application.getPaymentType() != null && !application.getPaymentType().isBlank()) {
+            return application.getPaymentType();
+        }
+        return DEFAULT_PAYMENT_TYPE;
     }
 }

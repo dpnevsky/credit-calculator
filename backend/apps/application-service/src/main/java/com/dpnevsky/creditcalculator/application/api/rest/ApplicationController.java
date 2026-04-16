@@ -6,6 +6,7 @@ import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationDocu
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationScoringResultResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetOfferResponse;
+import com.dpnevsky.creditcalculator.application.api.rest.dto.RequestDocumentsRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.RequestDocumentsResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.SelectOfferResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.SubmitApplicationRequest;
@@ -145,10 +146,11 @@ public class ApplicationController {
     @PostMapping("/api/applications/{applicationId}/request-documents")
     public RequestDocumentsResponse requestDocuments(
             @RequestHeader(value = "X-Debug-Auth", required = false) String debugAuthHeader,
-            @PathVariable UUID applicationId
+            @PathVariable UUID applicationId,
+            @Valid @RequestBody(required = false) RequestDocumentsRequest request
     ) {
         validateDebugHeader(debugAuthHeader);
-        return requestDocumentsService.requestDocuments(applicationId);
+        return requestDocumentsService.requestDocuments(applicationId, request == null ? null : request.paymentType());
     }
 
     @GetMapping("/api/applications/{applicationId}/documents")

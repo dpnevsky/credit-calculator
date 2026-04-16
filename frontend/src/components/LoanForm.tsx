@@ -112,6 +112,16 @@ const LoanForm: React.FC<LoanFormProps> = ({ onCalculate, onClear }) => {
             <span className="radio-text">Дифференцированный</span>
           </label>
         </div>
+        <div className="payment-type-description" aria-label="Описание типов платежей">
+          <div className="payment-type-card">
+            <h3>Аннуитетный платеж</h3>
+            <p>Ежемесячный платеж остается примерно одинаковым весь срок кредита. Это удобно, если важен предсказуемый платеж каждый месяц.</p>
+          </div>
+          <div className="payment-type-card">
+            <h3>Дифференцированный платеж</h3>
+            <p>Платеж в начале выше, а затем постепенно уменьшается. Такой вариант часто снижает переплату, но требует большей нагрузки в первые месяцы.</p>
+          </div>
+        </div>
       </div>
 
       <div className="loan-form-actions">

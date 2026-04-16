@@ -54,6 +54,9 @@ public class ApplicationEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @Column(name = "payment_type", nullable = false, length = 32)
+    private String paymentType;
+
     protected ApplicationEntity() {
         // for JPA
     }
@@ -71,7 +74,8 @@ public class ApplicationEntity {
             String passportSeries,
             String passportNumber,
             OffsetDateTime createdAt,
-            OffsetDateTime updatedAt
+            OffsetDateTime updatedAt,
+            String paymentType
     ) {
         this.id = id;
         this.status = status;
@@ -86,6 +90,7 @@ public class ApplicationEntity {
         this.passportNumber = passportNumber;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.paymentType = paymentType;
     }
 
     public UUID getId() {
@@ -140,11 +145,19 @@ public class ApplicationEntity {
         return updatedAt;
     }
 
+    public String getPaymentType() {
+        return paymentType;
+    }
+
     public void setStatus(String status) {
         this.status = status;
     }
 
     public void setUpdatedAt(OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public void setPaymentType(String paymentType) {
+        this.paymentType = paymentType;
     }
 }

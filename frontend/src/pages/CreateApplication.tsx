@@ -48,6 +48,7 @@ const CreateApplication: React.FC = () => {
     passportSeries: '',
     passportNumber: '',
   });
+  const isEmployerInnRequired = scoringForm.employmentStatus !== 'UNEMPLOYED';
 
   useEffect(() => {
     const savedFormDraft = localStorage.getItem(APPLICATION_FORM_DRAFT_KEY);
@@ -106,7 +107,7 @@ const CreateApplication: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       [name]: type === 'number' ? (value === '' ? '' : Number(value)) : value,
     }));
@@ -125,7 +126,7 @@ const CreateApplication: React.FC = () => {
       value = target.value;
     }
 
-    setScoringForm(prev => ({ ...prev, [name]: value }));
+    setScoringForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -158,7 +159,7 @@ const CreateApplication: React.FC = () => {
             <legend>Параметры кредита</legend>
             <div className="form-row">
               <div className="form-field">
-                <label htmlFor="amount">Сумма кредита (&#8381;)</label>
+                <label htmlFor="amount">Сумма кредита (₽)</label>
                 <input type="number" id="amount" name="amount" value={form.amount} onChange={handleChange} min={20000} step={10000} required />
               </div>
               <div className="form-field">
@@ -233,6 +234,20 @@ const CreateApplication: React.FC = () => {
             </div>
             <div className="form-row">
               <div className="form-field">
+                <label htmlFor="dependentAmount">Иждивенцы</label>
+                <input type="number" id="dependentAmount" name="dependentAmount" value={scoringForm.dependentAmount} onChange={handleScoringChange} min={0} />
+              </div>
+              <div className="form-field">
+                <label htmlFor="passportIssueDate">Дата выдачи паспорта</label>
+                <input type="date" id="passportIssueDate" name="passportIssueDate" value={scoringForm.passportIssueDate} onChange={handleScoringChange} required />
+              </div>
+              <div className="form-field">
+                <label htmlFor="passportIssueBranch">Код подразделения</label>
+                <input type="text" id="passportIssueBranch" name="passportIssueBranch" value={scoringForm.passportIssueBranch} onChange={handleScoringChange} required />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-field">
                 <label htmlFor="employmentStatus">Статус занятости</label>
                 <select id="employmentStatus" name="employmentStatus" value={scoringForm.employmentStatus} onChange={handleScoringChange}>
                   <option value="EMPLOYED">Работаю</option>
@@ -259,6 +274,19 @@ const CreateApplication: React.FC = () => {
             </div>
             <div className="form-row">
               <div className="form-field">
+                <label htmlFor="employerInn">ИНН работодателя</label>
+                <input
+                  type="text"
+                  id="employerInn"
+                  name="employerInn"
+                  value={scoringForm.employerInn}
+                  onChange={handleScoringChange}
+                  maxLength={12}
+                  required={isEmployerInnRequired}
+                  disabled={!isEmployerInnRequired}
+                />
+              </div>
+              <div className="form-field">
                 <label htmlFor="salary">Зарплата (₽)</label>
                 <input type="number" id="salary" name="salary" value={scoringForm.salary} onChange={handleScoringChange} min={0} step={1000} required />
               </div>
@@ -272,16 +300,6 @@ const CreateApplication: React.FC = () => {
                 <label htmlFor="workExperienceCurrent">Текущий стаж (мес.)</label>
                 <input type="number" id="workExperienceCurrent" name="workExperienceCurrent" value={scoringForm.workExperienceCurrent} onChange={handleScoringChange} min={0} required />
               </div>
-            </div>
-            <div className="form-row checkbox-row">
-              <label className="checkbox-label">
-                <input type="checkbox" name="insuranceEnabled" checked={scoringForm.insuranceEnabled} onChange={handleScoringChange} />
-                Страхование жизни
-              </label>
-              <label className="checkbox-label">
-                <input type="checkbox" name="salaryClient" checked={scoringForm.salaryClient} onChange={handleScoringChange} />
-                Зарплатный клиент
-              </label>
             </div>
           </fieldset>
 

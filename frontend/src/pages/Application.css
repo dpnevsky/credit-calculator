@@ -372,6 +372,25 @@
   font-size: 0.9rem;
 }
 
+.contract-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.contract-preview p {
+  margin: 0;
+}
+
+.contract-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
 /* ===== Documents ===== */
 .documents-list {
   display: flex;
@@ -513,6 +532,11 @@
   text-align: right;
 }
 
+.app-card-rejection {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
 .link-text {
   color: #2563eb;
   font-weight: 500;
@@ -608,6 +632,10 @@
   }
 
   .action-buttons {
+    flex-direction: column;
+  }
+
+  .contract-actions {
     flex-direction: column;
   }
 

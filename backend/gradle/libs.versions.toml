@@ -9,6 +9,7 @@ openhtmltopdf = "1.0.10"
 jakarta-validation = "3.0.2"
 testcontainers = "1.19.8"
 awaitility = "4.2.1"
+poi = "5.3.0"
 
 [libraries]
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
@@ -19,6 +20,7 @@ jackson-dataformat-xml = { module = "com.fasterxml.jackson.dataformat:jackson-da
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version.ref = "jakarta-validation" }
 
 openhtmltopdf-pdfbox = { module = "com.openhtmltopdf:openhtmltopdf-pdfbox", version.ref = "openhtmltopdf" }
+poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi" }
 
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }

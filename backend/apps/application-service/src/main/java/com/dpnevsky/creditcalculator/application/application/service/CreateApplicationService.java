@@ -18,6 +18,7 @@ public class CreateApplicationService {
 
     private static final String INITIAL_STATUS = "DRAFT";
     private static final String PRESCORING_REJECTED_STATUS = "PRESCORING_REJECTED";
+    private static final String DEFAULT_PAYMENT_TYPE = "ANNUITY";
 
     private final CreatePreliminaryOffersService createPreliminaryOffersService;
     private final PreliminaryOfferResponseMapper preliminaryOfferResponseMapper;
@@ -64,7 +65,8 @@ public class CreateApplicationService {
                 request.passportSeries(),
                 request.passportNumber(),
                 now,
-                now
+                now,
+                DEFAULT_PAYMENT_TYPE
         );
         applicationRepository.save(applicationEntity);
 

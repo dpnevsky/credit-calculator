@@ -1,5 +1,6 @@
 package com.dpnevsky.creditcalculator.application.domain.offers;
 
+import com.dpnevsky.creditcalculator.calculator.service.util.ServiceForCalculate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -10,11 +11,6 @@ import java.util.UUID;
 
 @Service
 public class LegacyPreOfferGenerationService {
-
-    private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
-    private static final BigDecimal TWELVE = BigDecimal.valueOf(12);
-    private static final BigDecimal INSURANCE_PERCENT = BigDecimal.valueOf(0.04);
-    private static final BigDecimal MAX_INSURANCE_PRICE = BigDecimal.valueOf(100_000);
 
     @Value("${loan.base-rate:15.00}")
     private BigDecimal baseRate;
@@ -67,22 +63,12 @@ public class LegacyPreOfferGenerationService {
     }
 
     private BigDecimal calculateInsurancePrice(BigDecimal requestedAmount) {
-        BigDecimal insurancePrice = requestedAmount.multiply(INSURANCE_PERCENT);
-
-        if (insurancePrice.compareTo(MAX_INSURANCE_PRICE) > 0) {
-            insurancePrice = MAX_INSURANCE_PRICE;
-        }
-
-        return insurancePrice.setScale(2, RoundingMode.HALF_UP);
+        return ServiceForCalculate.calculateInsurancePrice(requestedAmount)
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calculateMonthlyPayment(BigDecimal totalAmount, BigDecimal rate, Integer termMonths) {
-        BigDecimal monthlyRate = rate.divide(ONE_HUNDRED.multiply(TWELVE), 10, RoundingMode.HALF_EVEN);
-        BigDecimal pow = BigDecimal.ONE.add(monthlyRate).pow(termMonths);
-        BigDecimal annuityCoefficient = monthlyRate.multiply(pow)
-                .divide(pow.subtract(BigDecimal.ONE), 10, RoundingMode.HALF_EVEN);
-
-        return totalAmount.multiply(annuityCoefficient)
+        return ServiceForCalculate.calculateMonthlyPayment(totalAmount, rate, termMonths)
                 .setScale(0, RoundingMode.HALF_EVEN);
     }
 

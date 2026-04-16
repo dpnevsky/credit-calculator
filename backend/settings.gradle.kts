@@ -20,6 +20,8 @@ include(
 "apps:scoring-service",
 "apps:document-service",
 
+"libs:domain:calculator-engine",
+
 "libs:contracts:event-envelope",
 "libs:contracts:document-events",
 "libs:contracts:scoring-internal-api",

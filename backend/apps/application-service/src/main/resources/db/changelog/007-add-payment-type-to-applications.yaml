@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-add-payment-type-to-applications
+      author: codex
+      changes:
+        - addColumn:
+            tableName: applications
+            columns:
+              - column:
+                  name: payment_type
+                  type: VARCHAR(32)
+                  defaultValue: ANNUITY
+                  constraints:
+                    nullable: false

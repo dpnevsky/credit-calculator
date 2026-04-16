@@ -11,6 +11,10 @@ public interface OfferRepository extends JpaRepository<OfferEntity, UUID> {
 
     List<OfferEntity> findAllByApplicationIdOrderByRateAsc(UUID applicationId);
 
+    Optional<OfferEntity> findFirstByApplicationIdAndSelectedTrue(UUID applicationId);
+
+    Optional<OfferEntity> findFirstByApplicationIdOrderByRateAsc(UUID applicationId);
+
     Optional<OfferEntity> findByIdAndApplicationId(UUID offerId, UUID applicationId);
 
     void deleteAllByApplicationId(UUID applicationId);

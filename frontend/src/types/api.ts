@@ -123,3 +123,7 @@ export interface RequestDocumentsResponse {
   requestId: string;
   message: string;
 }
+
+export interface RequestDocumentsRequest {
+  paymentType?: 'ANNUITY' | 'DIFFERENTIAL';
+}

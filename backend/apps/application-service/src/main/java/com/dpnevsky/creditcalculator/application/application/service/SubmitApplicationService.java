@@ -138,7 +138,8 @@ public class SubmitApplicationService {
                 existingApplication.getPassportSeries(),
                 existingApplication.getPassportNumber(),
                 existingApplication.getCreatedAt(),
-                now
+                now,
+                existingApplication.getPaymentType()
         );
         applicationRepository.save(updatedApplication);
 

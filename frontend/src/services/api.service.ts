@@ -10,6 +10,7 @@ import type {
   OfferResponse,
   SelectOfferResponse,
   DocumentResponse,
+  RequestDocumentsRequest,
   RequestDocumentsResponse,
 } from '../types/api';
 
@@ -72,14 +73,36 @@ const ApiService = {
     return response.data;
   },
 
-  async requestDocuments(applicationId: string): Promise<RequestDocumentsResponse> {
-    const response = await api.post<RequestDocumentsResponse>(`/applications/${applicationId}/request-documents`);
+  async requestDocuments(
+    applicationId: string,
+    data?: RequestDocumentsRequest,
+  ): Promise<RequestDocumentsResponse> {
+    const response = await api.post<RequestDocumentsResponse>(
+      `/applications/${applicationId}/request-documents`,
+      data,
+    );
     return response.data;
   },
 
   async getDocuments(applicationId: string): Promise<DocumentResponse[]> {
     const response = await api.get<DocumentResponse[]>(`/applications/${applicationId}/documents`);
     return response.data;
+  },
+
+  async downloadDocument(documentId: string): Promise<{ blob: Blob; fileName: string | null }> {
+    const response = await api.get<Blob>(`/documents/${documentId}/download`, {
+      responseType: 'blob',
+    });
+
+    const contentDisposition = response.headers['content-disposition'] as string | undefined;
+    const utf8Match = contentDisposition?.match(/filename\*=UTF-8''([^;]+)/i);
+    const simpleMatch = contentDisposition?.match(/filename="?([^"]+)"?/i);
+    const rawFileName = utf8Match?.[1] ?? simpleMatch?.[1] ?? null;
+
+    return {
+      blob: response.data,
+      fileName: rawFileName ? decodeURIComponent(rawFileName) : null,
+    };
   },
 
   getDocumentDownloadUrl(documentId: string): string {

@@ -32,6 +32,9 @@ const SubmitApplicationModal: React.FC<Props> = ({ applicationId, onClose, onSuc
     ...initialForm,
   });
 
+  const isEmployerInnRequired = form.employmentStatus !== 'UNEMPLOYED';
+  const hasAccountNumber = form.accountNumber.trim().length > 0;
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const target = e.target;
     const { name } = target;
@@ -45,7 +48,15 @@ const SubmitApplicationModal: React.FC<Props> = ({ applicationId, onClose, onSuc
       value = target.value;
     }
 
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      const nextForm = { ...prev, [name]: value };
+
+      if (name === 'accountNumber' && String(value).trim().length === 0) {
+        nextForm.salaryClient = false;
+      }
+
+      return nextForm;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,7 +81,7 @@ const SubmitApplicationModal: React.FC<Props> = ({ applicationId, onClose, onSuc
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Заполните анкету</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
@@ -151,10 +162,19 @@ const SubmitApplicationModal: React.FC<Props> = ({ applicationId, onClose, onSuc
             <div className="form-row">
               <div className="form-field">
                 <label htmlFor="employerInn">ИНН работодателя</label>
-                <input type="text" id="employerInn" name="employerInn" value={form.employerInn} onChange={handleChange} maxLength={12} required />
+                <input
+                  type="text"
+                  id="employerInn"
+                  name="employerInn"
+                  value={form.employerInn}
+                  onChange={handleChange}
+                  maxLength={12}
+                  required={isEmployerInnRequired}
+                  disabled={!isEmployerInnRequired}
+                />
               </div>
               <div className="form-field">
-                <label htmlFor="salary">Зарплата (&#8381;)</label>
+                <label htmlFor="salary">Зарплата (₽)</label>
                 <input type="number" id="salary" name="salary" value={form.salary} onChange={handleChange} min={0} step={1000} required />
               </div>
             </div>
@@ -175,7 +195,7 @@ const SubmitApplicationModal: React.FC<Props> = ({ applicationId, onClose, onSuc
             <div className="form-row">
               <div className="form-field">
                 <label htmlFor="accountNumber">Номер счёта</label>
-                <input type="text" id="accountNumber" name="accountNumber" value={form.accountNumber} onChange={handleChange} maxLength={20} required />
+                <input type="text" id="accountNumber" name="accountNumber" value={form.accountNumber} onChange={handleChange} maxLength={20} />
               </div>
             </div>
           </fieldset>
@@ -188,10 +208,11 @@ const SubmitApplicationModal: React.FC<Props> = ({ applicationId, onClose, onSuc
                 Страхование жизни
               </label>
               <label className="checkbox-label">
-                <input type="checkbox" name="salaryClient" checked={form.salaryClient} onChange={handleChange} />
+                <input type="checkbox" name="salaryClient" checked={form.salaryClient} onChange={handleChange} disabled={!hasAccountNumber} />
                 Зарплатный клиент
               </label>
             </div>
+            {!hasAccountNumber && <p className="hint-text">Чтобы выбрать зарплатного клиента, сначала укажите номер счёта.</p>}
           </fieldset>
 
           <div className="modal-actions">

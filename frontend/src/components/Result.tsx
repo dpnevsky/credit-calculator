@@ -5,6 +5,13 @@ interface ResultProps {
   monthlyPayment?: number;
   totalPayment?: number;
   overpayment?: number;
+  paymentSchedule?: Array<{
+    month: number;
+    payment: number;
+    principal: number;
+    interest: number;
+    balance: number;
+  }>;
 }
 
 const formatMoney = (value: number) =>
@@ -14,6 +21,7 @@ const Result: React.FC<ResultProps> = ({
   monthlyPayment,
   totalPayment,
   overpayment,
+  paymentSchedule,
 }) => {
   if (monthlyPayment === undefined) return null;
 
@@ -34,6 +42,35 @@ const Result: React.FC<ResultProps> = ({
           <span className="result-value result-overpayment">{overpayment !== undefined ? formatMoney(overpayment) : '—'}</span>
         </div>
       </div>
+      {paymentSchedule && paymentSchedule.length > 0 && (
+        <div className="result-schedule">
+          <h4 className="result-schedule-title">График платежей по месяцам</h4>
+          <div className="result-table-wrapper">
+            <table className="result-table">
+              <thead>
+                <tr>
+                  <th>Месяц</th>
+                  <th>Платёж</th>
+                  <th>Проценты</th>
+                  <th>Тело кредита</th>
+                  <th>Остаток</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentSchedule.map((row) => (
+                  <tr key={row.month}>
+                    <td>{row.month}</td>
+                    <td>{formatMoney(row.payment)}</td>
+                    <td>{formatMoney(row.interest)}</td>
+                    <td>{formatMoney(row.principal)}</td>
+                    <td>{formatMoney(row.balance)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

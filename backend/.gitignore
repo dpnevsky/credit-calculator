@@ -1,34 +1,7 @@
-# IntelliJ
+.gradle/
+.gradle-local/
 .idea/
-*.iml
-/out/
-
-# Eclipse
-.project
-.classpath
-.settings/
-bin/
-
-# Environment
-.env
-.env.*
-!.env.example
-
-# Local
-java-development/
-
-# Docs that should stay local only
 docs/my/
 docs/references/
-
-# Gradle
-.gradle/
-build/
+java-development/
 **/build/
-
-# Logs
-*.log
-
-# OS files
-.DS_Store
-Thumbs.db
