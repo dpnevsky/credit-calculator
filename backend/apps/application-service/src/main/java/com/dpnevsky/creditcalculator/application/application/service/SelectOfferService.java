@@ -34,9 +34,9 @@ public class SelectOfferService {
                 .orElseThrow(() -> new ApplicationNotFoundException(applicationId));
 
         String currentStatus = application.getStatus();
-        if (!"SCORING_COMPLETED".equals(currentStatus) && !"DRAFT".equals(currentStatus)) {
+        if (!"SCORING_COMPLETED".equals(currentStatus)) {
             throw new IllegalStateException(
-                    "Offer can only be selected for applications with status DRAFT or SCORING_COMPLETED, current: " + currentStatus
+                    "Offer can only be selected for applications with status SCORING_COMPLETED, current: " + currentStatus
             );
         }
 

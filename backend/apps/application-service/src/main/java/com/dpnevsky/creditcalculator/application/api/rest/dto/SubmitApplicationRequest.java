@@ -1,6 +1,7 @@
 package com.dpnevsky.creditcalculator.application.api.rest.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -34,7 +35,6 @@ public record SubmitApplicationRequest(
         @NotBlank
         String passportIssueBranch,
 
-        @NotBlank
         String accountNumber,
 
         @NotNull
@@ -96,5 +96,10 @@ public record SubmitApplicationRequest(
             @Min(0)
             Integer workExperienceCurrent
     ) {
+    }
+
+    @AssertTrue(message = "Account number is required when salary client is enabled")
+    public boolean isAccountNumberValidForSalaryClient() {
+        return !Boolean.TRUE.equals(salaryClient) || (accountNumber != null && !accountNumber.isBlank());
     }
 }

@@ -2,7 +2,6 @@ package com.dpnevsky.creditcalculator.application.application.service;
 
 import com.dpnevsky.creditcalculator.application.api.rest.dto.CreateApplicationRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.CreateApplicationResponse;
-import com.dpnevsky.creditcalculator.application.api.rest.mapper.PreliminaryOfferResponseMapper;
 import com.dpnevsky.creditcalculator.application.domain.prescoring.LegacyPrescoringService;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationRepository;
@@ -20,19 +19,13 @@ public class CreateApplicationService {
     private static final String PRESCORING_REJECTED_STATUS = "PRESCORING_REJECTED";
     private static final String DEFAULT_PAYMENT_TYPE = "ANNUITY";
 
-    private final CreatePreliminaryOffersService createPreliminaryOffersService;
-    private final PreliminaryOfferResponseMapper preliminaryOfferResponseMapper;
     private final LegacyPrescoringService legacyPrescoringService;
     private final ApplicationRepository applicationRepository;
 
     public CreateApplicationService(
-            CreatePreliminaryOffersService createPreliminaryOffersService,
-            PreliminaryOfferResponseMapper preliminaryOfferResponseMapper,
             LegacyPrescoringService legacyPrescoringService,
             ApplicationRepository applicationRepository
     ) {
-        this.createPreliminaryOffersService = createPreliminaryOffersService;
-        this.preliminaryOfferResponseMapper = preliminaryOfferResponseMapper;
         this.legacyPrescoringService = legacyPrescoringService;
         this.applicationRepository = applicationRepository;
     }
@@ -81,19 +74,13 @@ public class CreateApplicationService {
             );
         }
 
-        var offers = createPreliminaryOffersService.create(
-                applicationId,
-                request.amount(),
-                request.termMonths()
-        );
-
         return new CreateApplicationResponse(
                 applicationId,
                 INITIAL_STATUS,
                 request.amount(),
                 request.termMonths(),
                 List.of(),
-                preliminaryOfferResponseMapper.toResponseList(offers)
+                List.of()
         );
     }
 }

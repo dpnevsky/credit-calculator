@@ -31,10 +31,21 @@ public class CreatePreliminaryOffersService {
             BigDecimal requestedAmount,
             Integer termMonths
     ) {
+        return create(applicationId, requestedAmount, termMonths, null);
+    }
+
+    @Transactional
+    public List<LegacyPreOfferGenerationService.PreliminaryOffer> create(
+            UUID applicationId,
+            BigDecimal requestedAmount,
+            Integer termMonths,
+            BigDecimal approvedBaseRate
+    ) {
         offerRepository.deleteAllByApplicationId(applicationId);
 
-        List<LegacyPreOfferGenerationService.PreliminaryOffer> offers =
-                legacyPreOfferGenerationService.generateOffers(applicationId, requestedAmount, termMonths);
+        List<LegacyPreOfferGenerationService.PreliminaryOffer> offers = approvedBaseRate == null
+                ? legacyPreOfferGenerationService.generateOffers(applicationId, requestedAmount, termMonths)
+                : legacyPreOfferGenerationService.generateOffers(applicationId, requestedAmount, termMonths, approvedBaseRate);
 
         OffsetDateTime now = OffsetDateTime.now();
 

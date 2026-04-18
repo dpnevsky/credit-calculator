@@ -36,7 +36,10 @@ public class GetApplicationsService {
                 applicationEntity.getBirthDate(),
                 applicationEntity.getPassportSeries(),
                 applicationEntity.getPassportNumber(),
-                applicationEntity.getCreatedAt()
+                applicationEntity.getCreatedAt(),
+                applicationEntity.getUpdatedAt(),
+                applicationEntity.getPaymentType(),
+                null
         );
     }
 }

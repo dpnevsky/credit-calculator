@@ -90,3 +90,5 @@ databaseChangeLog:
       file: db/changelog/006-create-offers.yaml
   - include:
       file: db/changelog/007-add-payment-type-to-applications.yaml
+  - include:
+      file: db/changelog/008-make-account-number-nullable.yaml

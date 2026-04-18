@@ -133,6 +133,7 @@ public class LegacyScoringPolicyService {
                 request.birthDate(),
                 LoanScoringData.GenderType.valueOf(request.gender().name()),
                 LoanScoringData.MaritalStatusType.valueOf(request.maritalStatus().name()),
+                request.dependentAmount(),
                 Boolean.TRUE.equals(request.loanRequest().insuranceEnabled()),
                 Boolean.TRUE.equals(request.loanRequest().salaryClient()),
                 new LoanScoringData.Employment(

@@ -16,11 +16,20 @@ public class LegacyPreOfferGenerationService {
     private BigDecimal baseRate;
 
     public List<PreliminaryOffer> generateOffers(UUID applicationId, BigDecimal requestedAmount, Integer termMonths) {
+        return generateOffers(applicationId, requestedAmount, termMonths, baseRate);
+    }
+
+    public List<PreliminaryOffer> generateOffers(
+            UUID applicationId,
+            BigDecimal requestedAmount,
+            Integer termMonths,
+            BigDecimal approvedBaseRate
+    ) {
         return List.of(
-                buildOffer(applicationId, requestedAmount, termMonths, false, false),
-                buildOffer(applicationId, requestedAmount, termMonths, true, false),
-                buildOffer(applicationId, requestedAmount, termMonths, false, true),
-                buildOffer(applicationId, requestedAmount, termMonths, true, true)
+                buildOffer(applicationId, requestedAmount, termMonths, approvedBaseRate, false, false),
+                buildOffer(applicationId, requestedAmount, termMonths, approvedBaseRate, true, false),
+                buildOffer(applicationId, requestedAmount, termMonths, approvedBaseRate, false, true),
+                buildOffer(applicationId, requestedAmount, termMonths, approvedBaseRate, true, true)
         );
     }
 
@@ -28,10 +37,11 @@ public class LegacyPreOfferGenerationService {
             UUID applicationId,
             BigDecimal requestedAmount,
             Integer termMonths,
+            BigDecimal approvedBaseRate,
             boolean insuranceEnabled,
             boolean salaryClient
     ) {
-        BigDecimal rate = calculateRate(baseRate, insuranceEnabled, salaryClient);
+        BigDecimal rate = calculateRate(approvedBaseRate, insuranceEnabled, salaryClient);
         BigDecimal insurancePrice = insuranceEnabled ? calculateInsurancePrice(requestedAmount) : BigDecimal.ZERO;
         BigDecimal totalAmount = requestedAmount.add(insurancePrice);
         BigDecimal monthlyPayment = calculateMonthlyPayment(totalAmount, rate, termMonths);

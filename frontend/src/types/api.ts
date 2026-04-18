@@ -1,3 +1,9 @@
+export type Gender = 'MALE' | 'FEMALE' | 'NON_BINARY';
+export type MaritalStatus = 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED';
+export type EmploymentStatus = 'EMPLOYED' | 'UNEMPLOYED' | 'SELF_EMPLOYED' | 'RETIRED' | 'BUSINESS_OWNER' | 'STUDENT';
+export type Position = 'MID_MANAGER' | 'TOP_MANAGER' | 'JUNIOR_MANAGER' | 'DEVELOPER' | 'SALES' | 'ACCOUNTANT' | 'HR' | 'OTHER';
+export type PaymentType = 'ANNUITY' | 'DIFFERENTIAL';
+
 export interface CreateApplicationRequest {
   amount: number;
   termMonths: number;
@@ -10,13 +16,6 @@ export interface CreateApplicationRequest {
   passportNumber: string;
 }
 
-export interface CreateApplicationResponse {
-  applicationId: string;
-  status: string;
-  createdAt: string;
-  offers: PreliminaryOffer[];
-}
-
 export interface PreliminaryOffer {
   applicationId: string;
   requestedAmount: number;
@@ -26,6 +25,50 @@ export interface PreliminaryOffer {
   rate: number;
   insuranceEnabled: boolean;
   salaryClient: boolean;
+}
+
+export interface CreateApplicationResponse {
+  applicationId: string;
+  status: string;
+  amount: number;
+  termMonths: number;
+  prescoringReasons: string[];
+  preliminaryOffers: PreliminaryOffer[];
+}
+
+export interface SubmitApplicationRequest {
+  gender: Gender;
+  passportIssueDate: string;
+  passportIssueBranch: string;
+  maritalStatus: MaritalStatus;
+  dependentAmount: number;
+  employmentStatus: EmploymentStatus;
+  employerInn: string;
+  salary: number;
+  position: Position;
+  workExperienceTotal: number;
+  workExperienceCurrent: number;
+  accountNumber: string;
+  insuranceEnabled: boolean;
+  salaryClient: boolean;
+}
+
+export interface ApplicationSubmitData {
+  gender: Gender;
+  passportIssueDate: string;
+  passportIssueBranch: string;
+  maritalStatus: MaritalStatus;
+  dependentAmount: number;
+  employmentStatus: EmploymentStatus;
+  employerInn: string | null;
+  salary: number;
+  position: Position;
+  workExperienceTotal: number;
+  workExperienceCurrent: number;
+  accountNumber: string | null;
+  insuranceEnabled: boolean;
+  salaryClient: boolean;
+  submittedAt: string;
 }
 
 export interface ApplicationResponse {
@@ -42,44 +85,32 @@ export interface ApplicationResponse {
   passportNumber: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface SubmitApplicationRequest {
-  gender: 'MALE' | 'FEMALE' | 'NON_BINARY';
-  passportIssueDate: string;
-  passportIssueBranch: string;
-  maritalStatus: 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED';
-  dependentAmount: number;
-  employmentStatus: 'EMPLOYED' | 'UNEMPLOYED' | 'SELF_EMPLOYED' | 'RETIRED' | 'BUSINESS_OWNER' | 'STUDENT';
-  employerInn: string;
-  salary: number;
-  position: 'MID_MANAGER' | 'TOP_MANAGER' | 'JUNIOR_MANAGER' | 'DEVELOPER' | 'SALES' | 'ACCOUNTANT' | 'HR' | 'OTHER';
-  workExperienceTotal: number;
-  workExperienceCurrent: number;
-  accountNumber: string;
-  insuranceEnabled: boolean;
-  salaryClient: boolean;
+  paymentType: PaymentType;
+  submitData: ApplicationSubmitData | null;
 }
 
 export interface SubmitApplicationResponse {
   applicationId: string;
-  scoringDecision: string;
   scoringStatus: string;
-  approvedRate: number | null;
-  approvedAmount: number | null;
-  monthlyPayment: number | null;
+  scoringDecision: string;
+  scoreValue: number;
   riskGrade: string | null;
+  rulesVersion: string;
+  approvedAmount: number | null;
+  approvedTermMonths: number | null;
+  approvedRate: number | null;
   rejectionReasons: string[];
 }
 
 export interface ScoringResultResponse {
   applicationId: string;
   scoringDecision: string;
-  scoringStatus: string;
-  approvedRate: number | null;
-  approvedAmount: number | null;
-  monthlyPayment: number | null;
+  scoreValue: number;
   riskGrade: string | null;
+  rulesVersion: string;
+  approvedAmount: number | null;
+  approvedTermMonths: number | null;
+  approvedRate: number | null;
   rejectionReasons: string[];
   evaluatedAt: string;
 }
@@ -120,10 +151,10 @@ export interface DocumentResponse {
 
 export interface RequestDocumentsResponse {
   applicationId: string;
-  requestId: string;
+  status: string;
   message: string;
 }
 
 export interface RequestDocumentsRequest {
-  paymentType?: 'ANNUITY' | 'DIFFERENTIAL';
+  paymentType?: PaymentType;
 }

@@ -2,7 +2,6 @@ package com.dpnevsky.creditcalculator.application.application.service;
 
 import com.dpnevsky.creditcalculator.application.api.rest.dto.UpdateApplicationRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.UpdateApplicationResponse;
-import com.dpnevsky.creditcalculator.application.api.rest.mapper.PreliminaryOfferResponseMapper;
 import com.dpnevsky.creditcalculator.application.application.exception.ApplicationNotFoundException;
 import com.dpnevsky.creditcalculator.application.domain.prescoring.LegacyPrescoringService;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
@@ -22,19 +21,13 @@ public class UpdateApplicationService {
 
     private final ApplicationRepository applicationRepository;
     private final LegacyPrescoringService legacyPrescoringService;
-    private final CreatePreliminaryOffersService createPreliminaryOffersService;
-    private final PreliminaryOfferResponseMapper preliminaryOfferResponseMapper;
 
     public UpdateApplicationService(
             ApplicationRepository applicationRepository,
-            LegacyPrescoringService legacyPrescoringService,
-            CreatePreliminaryOffersService createPreliminaryOffersService,
-            PreliminaryOfferResponseMapper preliminaryOfferResponseMapper
+            LegacyPrescoringService legacyPrescoringService
     ) {
         this.applicationRepository = applicationRepository;
         this.legacyPrescoringService = legacyPrescoringService;
-        this.createPreliminaryOffersService = createPreliminaryOffersService;
-        this.preliminaryOfferResponseMapper = preliminaryOfferResponseMapper;
     }
 
     @Transactional
@@ -84,19 +77,13 @@ public class UpdateApplicationService {
             );
         }
 
-        var offers = createPreliminaryOffersService.create(
-                applicationId,
-                request.amount(),
-                request.termMonths()
-        );
-
         return new UpdateApplicationResponse(
                 applicationId,
                 UPDATED_STATUS,
                 request.amount(),
                 request.termMonths(),
                 List.of(),
-                preliminaryOfferResponseMapper.toResponseList(offers)
+                List.of()
         );
     }
 }

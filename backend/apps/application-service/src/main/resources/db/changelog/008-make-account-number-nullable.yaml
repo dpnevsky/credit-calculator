@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-make-account-number-nullable
+      author: codex
+      changes:
+        - dropNotNullConstraint:
+            tableName: application_submit_data
+            columnName: account_number
+            columnDataType: VARCHAR(64)

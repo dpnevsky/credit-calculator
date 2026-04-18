@@ -3,10 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import ApiService from '../services/api.service';
 import type {
   ApplicationResponse,
+  ApplicationSubmitData,
   DocumentResponse,
   OfferResponse,
+  PaymentType,
   ScoringResultResponse,
-  SubmitApplicationRequest,
 } from '../types/api';
 import {
   getApplicationRejectionReasons,
@@ -37,10 +38,8 @@ const ApplicationDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [submitDraft, setSubmitDraft] = useState<Partial<SubmitApplicationRequest> | undefined>(undefined);
-  const [submittedScoring, setSubmittedScoring] = useState<Partial<SubmitApplicationRequest> | null>(null);
   const [previewOfferId, setPreviewOfferId] = useState<string | null>(null);
-  const [paymentType, setPaymentType] = useState<'ANNUITY' | 'DIFFERENTIAL'>('ANNUITY');
+  const [paymentType, setPaymentType] = useState<PaymentType>('ANNUITY');
   const [isPaymentTypeHydrated, setIsPaymentTypeHydrated] = useState(false);
   const [salaryAccountNumber, setSalaryAccountNumber] = useState('');
 
@@ -74,7 +73,7 @@ const ApplicationDetails: React.FC = () => {
             await ApiService.requestDocuments(applicationId);
             docs = await ApiService.getDocuments(applicationId);
           } catch {
-            // Documents may be generated asynchronously.
+            // Documents can be generated asynchronously.
           }
         }
         setDocuments(docs);
@@ -97,55 +96,22 @@ const ApplicationDetails: React.FC = () => {
   }, [loadData]);
 
   useEffect(() => {
-    if (!applicationId) {
-      return;
-    }
-
-    const draft = sessionStorage.getItem(`cc_submit_draft_${applicationId}`);
-    if (!draft) {
-      return;
-    }
-
-    try {
-      setSubmitDraft(JSON.parse(draft) as Partial<SubmitApplicationRequest>);
-    } catch {
-      setSubmitDraft(undefined);
-    }
-  }, [applicationId]);
-
-  useEffect(() => {
-    if (!applicationId) {
-      return;
-    }
-
-    const submittedRaw = localStorage.getItem(`cc_submitted_scoring_${applicationId}`);
-    if (!submittedRaw) {
-      setSubmittedScoring(null);
-      return;
-    }
-
-    try {
-      setSubmittedScoring(JSON.parse(submittedRaw) as Partial<SubmitApplicationRequest>);
-    } catch {
-      setSubmittedScoring(null);
-    }
-  }, [applicationId]);
-
-  useEffect(() => {
-    if (!applicationId) {
+    if (!applicationId || !application) {
       return;
     }
 
     const paymentTypeRaw = localStorage.getItem(`cc_payment_type_${applicationId}`);
     if (paymentTypeRaw === 'DIFFERENTIAL' || paymentTypeRaw === 'ANNUITY') {
       setPaymentType(paymentTypeRaw);
+    } else {
+      setPaymentType(application.paymentType);
     }
 
     setIsPaymentTypeHydrated(true);
-  }, [applicationId]);
+  }, [applicationId, application]);
 
   useEffect(() => {
-    if (!applicationId) {
+    if (!applicationId || !application) {
       return;
     }
 
@@ -155,9 +121,9 @@ const ApplicationDetails: React.FC = () => {
       return;
     }
 
-    const fallbackAccount = submittedScoring?.accountNumber ?? submitDraft?.accountNumber ?? '';
-    setSalaryAccountNumber(fallbackAccount.replace(/\D/g, '').slice(0, ACCOUNT_NUMBER_LENGTH));
-  }, [applicationId, submitDraft, submittedScoring]);
+    const backendAccount = application.submitData?.accountNumber ?? '';
+    setSalaryAccountNumber(backendAccount.replace(/\D/g, '').slice(0, ACCOUNT_NUMBER_LENGTH));
+  }, [applicationId, application]);
 
   useEffect(() => {
     if (!applicationId || !isPaymentTypeHydrated) {
@@ -177,67 +143,37 @@ const ApplicationDetails: React.FC = () => {
 
   useEffect(() => {
     if (!offers.length) {
+      setPreviewOfferId(null);
       return;
     }
 
     const selected = offers.find((offer) => offer.selected);
-    setPreviewOfferId((prev) => prev ?? selected?.offerId ?? offers[0].offerId);
-  }, [offers]);
+    const previewStillExists = previewOfferId && offers.some((offer) => offer.offerId === previewOfferId);
+    if (!previewStillExists) {
+      setPreviewOfferId(selected?.offerId ?? offers[0].offerId);
+    }
+  }, [offers, previewOfferId]);
 
   const normalizedSalaryAccountNumber = salaryAccountNumber.replace(/\D/g, '').slice(0, ACCOUNT_NUMBER_LENGTH);
   const isSalaryAccountNumberValid = normalizedSalaryAccountNumber.length === ACCOUNT_NUMBER_LENGTH;
 
-  const handleSelectOffer = async (offerId: string) => {
-    if (!applicationId) {
-      return;
-    }
-
-    const selected = offers.find((offer) => offer.offerId === offerId);
-    if (!selected) {
-      return;
-    }
-
-    if (selected.salaryClient && !isSalaryAccountNumberValid) {
-      setError(`Введите ровно ${ACCOUNT_NUMBER_LENGTH} цифр банковского счёта для зарплатного предложения.`);
-      return;
-    }
-
-    const isConfirmed = window.confirm(
-      `Подтвердите выбор предложения ${selected.rate}% на ${selected.termMonths} мес.`,
-    );
-    if (!isConfirmed) {
-      return;
-    }
-
-    setActionLoading(true);
-    try {
-      await ApiService.selectOffer(applicationId, offerId);
-
-      try {
-        await ApiService.requestDocuments(applicationId, { paymentType });
-      } catch {
-        // Generation may take time; refreshed on next reload.
-      }
-
-      await loadData();
-    } catch (selectError: unknown) {
-      if (selectError instanceof Error) {
-        setError(selectError.message);
-      }
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   const formatMoney = (value: number) =>
-    new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(value);
+    new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: 'RUB',
+      maximumFractionDigits: 0,
+    }).format(value);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return date.toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
   };
 
-  const getGenderLabel = (value?: SubmitApplicationRequest['gender']) => {
+  const getGenderLabel = (value?: ApplicationSubmitData['gender']) => {
     switch (value) {
       case 'MALE':
         return 'Мужской';
@@ -250,7 +186,7 @@ const ApplicationDetails: React.FC = () => {
     }
   };
 
-  const getMaritalStatusLabel = (value?: SubmitApplicationRequest['maritalStatus']) => {
+  const getMaritalStatusLabel = (value?: ApplicationSubmitData['maritalStatus']) => {
     switch (value) {
       case 'SINGLE':
         return 'Не в браке';
@@ -265,7 +201,7 @@ const ApplicationDetails: React.FC = () => {
     }
   };
 
-  const getEmploymentStatusLabel = (value?: SubmitApplicationRequest['employmentStatus']) => {
+  const getEmploymentStatusLabel = (value?: ApplicationSubmitData['employmentStatus']) => {
     switch (value) {
       case 'EMPLOYED':
         return 'Работаю';
@@ -284,7 +220,7 @@ const ApplicationDetails: React.FC = () => {
     }
   };
 
-  const getPositionLabel = (value?: SubmitApplicationRequest['position']) => {
+  const getPositionLabel = (value?: ApplicationSubmitData['position']) => {
     switch (value) {
       case 'TOP_MANAGER':
         return 'Топ-менеджер';
@@ -311,17 +247,16 @@ const ApplicationDetails: React.FC = () => {
     if (value === undefined) {
       return 'Не указано';
     }
-
     return value ? 'Да' : 'Нет';
   };
 
-  const getPaymentTypeLabel = (type: 'ANNUITY' | 'DIFFERENTIAL') =>
+  const getPaymentTypeLabel = (type: PaymentType) =>
     type === 'ANNUITY' ? 'Аннуитетный' : 'Дифференцированный';
 
   const getInsuranceAmount = (offer: OfferResponse) =>
     offer.insuranceEnabled ? Math.max(0, offer.totalAmount - offer.requestedAmount) : 0;
 
-  const buildPaymentSchedule = (offer: OfferResponse, scheduleType: 'ANNUITY' | 'DIFFERENTIAL'): PaymentRow[] => {
+  const buildPaymentSchedule = (offer: OfferResponse, scheduleType: PaymentType): PaymentRow[] => {
     const rows: PaymentRow[] = [];
     const principal = offer.totalAmount;
     const months = offer.termMonths;
@@ -376,12 +311,60 @@ const ApplicationDetails: React.FC = () => {
   const selectedOffer = offers.find((offer) => offer.selected) ?? null;
   const previewSchedule = previewOffer ? buildPaymentSchedule(previewOffer, paymentType) : [];
   const contractDocument = getContractDocument(documents);
-  const scoringProfile = submittedScoring ?? submitDraft ?? null;
-  const isPaymentTypeLocked = selectedOffer !== null || application?.status === 'OFFER_SELECTED';
+  const scoringProfile = application?.submitData ?? null;
+  const isPaymentTypeLocked =
+    selectedOffer !== null ||
+    application?.status === 'OFFER_SELECTED' ||
+    application?.status === 'DOCUMENTS_REQUESTED' ||
+    application?.status === 'DOCUMENTS_READY';
   const rejectionReasons = getApplicationRejectionReasons(
     application?.status ?? '',
     scoringResult?.rejectionReasons ?? [],
   );
+
+  const handleSelectOffer = async (offerId: string) => {
+    if (!applicationId) {
+      return;
+    }
+
+    const selected = offers.find((offer) => offer.offerId === offerId);
+    if (!selected) {
+      return;
+    }
+
+    if (selected.salaryClient && !isSalaryAccountNumberValid) {
+      setError(`Введите ровно ${ACCOUNT_NUMBER_LENGTH} цифр банковского счёта для зарплатного предложения.`);
+      return;
+    }
+
+    const isConfirmed = window.confirm(
+      `Подтвердите выбор предложения ${selected.rate}% на ${selected.termMonths} мес.`,
+    );
+    if (!isConfirmed) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await ApiService.selectOffer(applicationId, offerId);
+
+      try {
+        await ApiService.requestDocuments(applicationId, { paymentType });
+      } catch {
+        // Генерация документов может завершиться позже.
+      }
+
+      await loadData();
+    } catch (selectError: unknown) {
+      if (selectError instanceof Error) {
+        setError(selectError.message);
+      } else {
+        setError('Не удалось выбрать предложение');
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const downloadContractPdf = async () => {
     if (!applicationId || !contractDocument) {
@@ -398,7 +381,7 @@ const ApplicationDetails: React.FC = () => {
         setDocuments(refreshedDocuments);
         documentToDownload = getContractDocument(refreshedDocuments) ?? documentToDownload;
       } catch {
-        // If regeneration fails, use the latest available PDF.
+        // Если регенерация не удалась, скачиваем последнюю доступную версию.
       }
 
       const { blob, fileName } = await ApiService.downloadDocument(documentToDownload.documentId);
@@ -414,7 +397,7 @@ const ApplicationDetails: React.FC = () => {
       if (downloadError instanceof Error) {
         setError(downloadError.message);
       } else {
-        setError('Не удалось скачать документ');
+        setError('Не удалось скачать договор');
       }
     } finally {
       setActionLoading(false);
@@ -483,7 +466,9 @@ const ApplicationDetails: React.FC = () => {
         <div className="info-grid">
           <div className="info-item">
             <span className="info-label">ФИО</span>
-            <span className="info-value">{application.lastName} {application.firstName} {application.middleName || ''}</span>
+            <span className="info-value">
+              {application.lastName} {application.firstName} {application.middleName || ''}
+            </span>
           </div>
           <div className="info-item">
             <span className="info-label">Email</span>
@@ -495,7 +480,9 @@ const ApplicationDetails: React.FC = () => {
           </div>
           <div className="info-item">
             <span className="info-label">Паспорт</span>
-            <span className="info-value">{application.passportSeries} {application.passportNumber}</span>
+            <span className="info-value">
+              {application.passportSeries} {application.passportNumber}
+            </span>
           </div>
           <div className="info-item">
             <span className="info-label">Сумма</span>
@@ -521,13 +508,11 @@ const ApplicationDetails: React.FC = () => {
               </div>
               <div className="info-item">
                 <span className="info-label">Иждивенцы</span>
-                <span className="info-value">{scoringProfile.dependentAmount ?? 'Не указано'}</span>
+                <span className="info-value">{scoringProfile.dependentAmount}</span>
               </div>
               <div className="info-item">
                 <span className="info-label">Дата выдачи паспорта</span>
-                <span className="info-value">
-                  {scoringProfile.passportIssueDate ? formatDate(scoringProfile.passportIssueDate) : 'Не указано'}
-                </span>
+                <span className="info-value">{formatDate(scoringProfile.passportIssueDate)}</span>
               </div>
               <div className="info-item">
                 <span className="info-label">Код подразделения</span>
@@ -547,21 +532,15 @@ const ApplicationDetails: React.FC = () => {
               </div>
               <div className="info-item">
                 <span className="info-label">Зарплата</span>
-                <span className="info-value">
-                  {scoringProfile.salary ? formatMoney(scoringProfile.salary) : 'Не указано'}
-                </span>
+                <span className="info-value">{formatMoney(scoringProfile.salary)}</span>
               </div>
               <div className="info-item">
                 <span className="info-label">Общий стаж</span>
-                <span className="info-value">
-                  {scoringProfile.workExperienceTotal !== undefined ? `${scoringProfile.workExperienceTotal} мес.` : 'Не указано'}
-                </span>
+                <span className="info-value">{scoringProfile.workExperienceTotal} мес.</span>
               </div>
               <div className="info-item">
                 <span className="info-label">Текущий стаж</span>
-                <span className="info-value">
-                  {scoringProfile.workExperienceCurrent !== undefined ? `${scoringProfile.workExperienceCurrent} мес.` : 'Не указано'}
-                </span>
+                <span className="info-value">{scoringProfile.workExperienceCurrent} мес.</span>
               </div>
               {selectedOffer && (
                 <div className="info-item">
@@ -578,7 +557,9 @@ const ApplicationDetails: React.FC = () => {
               {selectedOffer?.salaryClient && (
                 <div className="info-item">
                   <span className="info-label">Номер счёта</span>
-                  <span className="info-value">{normalizedSalaryAccountNumber || scoringProfile.accountNumber || 'Не указано'}</span>
+                  <span className="info-value">
+                    {normalizedSalaryAccountNumber || scoringProfile.accountNumber || 'Не указано'}
+                  </span>
                 </div>
               )}
               <div className="info-item">
@@ -592,21 +573,28 @@ const ApplicationDetails: React.FC = () => {
 
       {scoringResult && (
         <div
-          className={`card ${
-            scoringResult.scoringDecision === 'APPROVED'
-              ? 'card-success'
-              : scoringResult.scoringDecision === 'REJECTED'
-                ? 'card-danger'
-                : ''
-          }`}
+          className="card"
+          style={{
+            borderLeft: `8px solid ${getApplicationStatusColor(application.status, application.applicationId)}`,
+          }}
         >
           <h3>Результат скоринга</h3>
           <div className="info-grid">
             <div className="info-item">
               <span className="info-label">Решение</span>
-              <span className={`info-value ${scoringResult.scoringDecision === 'APPROVED' ? 'text-success' : 'text-danger'}`}>
-                {scoringResult.scoringDecision === 'APPROVED' ? 'Одобрено' : 'Отклонено'}
+              <span
+                className="info-value"
+                style={{
+                  color: getApplicationStatusColor(application.status, application.applicationId),
+                  fontWeight: 700,
+                }}
+              >
+                {getApplicationStatusLabel(application.status, application.applicationId)}
               </span>
+            </div>
+            <div className="info-item">
+              <span className="info-label">Скоринговый балл</span>
+              <span className="info-value">{scoringResult.scoreValue}</span>
             </div>
             {scoringResult.approvedRate !== null && (
               <div className="info-item">
@@ -620,10 +608,10 @@ const ApplicationDetails: React.FC = () => {
                 <span className="info-value">{formatMoney(scoringResult.approvedAmount)}</span>
               </div>
             )}
-            {scoringResult.monthlyPayment !== null && (
+            {scoringResult.approvedTermMonths !== null && (
               <div className="info-item">
-                <span className="info-label">Ежемесячный платёж</span>
-                <span className="info-value">{formatMoney(scoringResult.monthlyPayment)}</span>
+                <span className="info-label">Одобренный срок</span>
+                <span className="info-value">{scoringResult.approvedTermMonths} мес.</span>
               </div>
             )}
             {scoringResult.riskGrade && (
@@ -645,7 +633,7 @@ const ApplicationDetails: React.FC = () => {
               <select
                 id="paymentType"
                 value={paymentType}
-                onChange={(event) => setPaymentType(event.target.value as 'ANNUITY' | 'DIFFERENTIAL')}
+                onChange={(event) => setPaymentType(event.target.value as PaymentType)}
                 disabled={isPaymentTypeLocked}
               >
                 <option value="ANNUITY">Аннуитетный</option>
@@ -713,32 +701,30 @@ const ApplicationDetails: React.FC = () => {
                       {offer.salaryClient && <span className="tag tag-salary">Зарплатный клиент</span>}
                     </div>
                   </div>
-                  {!offer.selected &&
-                    (application.status === 'SCORING_COMPLETED' ||
-                      application.status === 'SCORING_APPROVED' ||
-                      application.status === 'DRAFT') && (
-                      <>
-                        {salaryOfferBlocked && (
-                          <div className="hint-text" style={{ marginBottom: '10px' }}>
-                            Для зарплатного предложения введите 20 цифр банковского счёта.
-                          </div>
-                        )}
-                        <button
-                          className="btn btn-primary btn-full"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void handleSelectOffer(offer.offerId);
-                          }}
-                          disabled={actionLoading || salaryOfferBlocked}
-                        >
-                          Выбрать
-                        </button>
-                      </>
-                    )}
+                  {!offer.selected && selectedOffer === null && application.status === 'SCORING_COMPLETED' && (
+                    <>
+                      {salaryOfferBlocked && (
+                        <div className="hint-text" style={{ marginBottom: '10px' }}>
+                          Для зарплатного предложения введите 20 цифр банковского счёта.
+                        </div>
+                      )}
+                      <button
+                        className="btn btn-primary btn-full"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleSelectOffer(offer.offerId);
+                        }}
+                        disabled={actionLoading || salaryOfferBlocked}
+                      >
+                        Выбрать
+                      </button>
+                    </>
+                  )}
                 </div>
               );
             })}
           </div>
+
           {previewOffer && (
             <div className="card" style={{ marginTop: '16px', marginBottom: 0 }}>
               <h3>График платежей: {getPaymentTypeLabel(paymentType)}</h3>
@@ -782,7 +768,12 @@ const ApplicationDetails: React.FC = () => {
             >
               Ознакомиться с договором
             </button>
-            <button type="button" className="btn btn-primary" onClick={() => void downloadContractPdf()} disabled={actionLoading}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void downloadContractPdf()}
+              disabled={actionLoading}
+            >
               Скачать договор
             </button>
           </div>

@@ -8,6 +8,7 @@ public record LoanScoringData(
         LocalDate birthdate,
         GenderType gender,
         MaritalStatusType maritalStatus,
+        Integer dependentAmount,
         boolean insuranceEnabled,
         boolean salaryClient,
         Employment employment

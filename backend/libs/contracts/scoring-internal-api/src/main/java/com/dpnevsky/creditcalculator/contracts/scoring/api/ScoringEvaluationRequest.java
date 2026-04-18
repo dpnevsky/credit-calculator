@@ -1,6 +1,7 @@
 package com.dpnevsky.creditcalculator.contracts.scoring.api;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -64,7 +65,6 @@ public record ScoringEvaluationRequest(
         @Valid
         Employment employment,
 
-        @NotBlank
         String accountNumber,
 
         @NotNull
@@ -159,5 +159,10 @@ public record ScoringEvaluationRequest(
             @NotBlank
             String rulesVersion
     ) {
+    }
+
+    @AssertTrue(message = "Account number is required when salary client is enabled")
+    public boolean isAccountNumberValidForSalaryClient() {
+        return !Boolean.TRUE.equals(loanRequest.salaryClient()) || (accountNumber != null && !accountNumber.isBlank());
     }
 }

@@ -48,6 +48,7 @@ const CreateApplication: React.FC = () => {
     passportSeries: '',
     passportNumber: '',
   });
+
   const isEmployerInnRequired = scoringForm.employmentStatus !== 'UNEMPLOYED';
 
   useEffect(() => {
@@ -59,7 +60,7 @@ const CreateApplication: React.FC = () => {
         const parsed = JSON.parse(savedFormDraft) as Partial<CreateApplicationRequest>;
         setForm((prev) => ({ ...prev, ...parsed }));
       } catch (parseError) {
-        console.warn('Невозможно прочитать черновик формы заявки', parseError);
+        console.warn('Не удалось прочитать черновик формы заявки', parseError);
       }
     }
 
@@ -68,7 +69,7 @@ const CreateApplication: React.FC = () => {
         const parsed = JSON.parse(savedScoringDraft) as Partial<SubmitApplicationRequest>;
         setScoringForm((prev) => ({ ...prev, ...parsed }));
       } catch (parseError) {
-        console.warn('Невозможно прочитать черновик формы скоринга', parseError);
+        console.warn('Не удалось прочитать черновик формы скоринга', parseError);
       }
     }
   }, []);
@@ -77,13 +78,15 @@ const CreateApplication: React.FC = () => {
     if (!user) {
       return;
     }
+
     const registrationProfileRaw = localStorage.getItem(REGISTRATION_PROFILE_KEY);
     let registrationProfile: Partial<CreateApplicationRequest> | null = null;
+
     if (registrationProfileRaw) {
       try {
         registrationProfile = JSON.parse(registrationProfileRaw) as Partial<CreateApplicationRequest>;
       } catch (parseError) {
-        console.warn('Невозможно прочитать профиль регистрации', parseError);
+        console.warn('Не удалось прочитать профиль регистрации', parseError);
       }
     }
 
@@ -135,14 +138,25 @@ const CreateApplication: React.FC = () => {
     setError(null);
 
     try {
-      const result = await ApiService.createApplication(form);
-      sessionStorage.setItem(`cc_submit_draft_${result.applicationId}`, JSON.stringify(scoringForm));
-      navigate('/applications');
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
+      const createdApplication = await ApiService.createApplication(form);
+
+      if (createdApplication.status !== 'PRESCORING_REJECTED') {
+        await ApiService.submitApplication(createdApplication.applicationId, {
+          ...scoringForm,
+          insuranceEnabled: false,
+          salaryClient: false,
+          accountNumber: '',
+        });
+      }
+
+      localStorage.removeItem(APPLICATION_FORM_DRAFT_KEY);
+      localStorage.removeItem(SCORING_FORM_DRAFT_KEY);
+      navigate(`/applications/${createdApplication.applicationId}`);
+    } catch (submitError: unknown) {
+      if (submitError instanceof Error) {
+        setError(submitError.message);
       } else {
-        setError('Ошибка при создании заявки');
+        setError('Ошибка при создании или отправке заявки');
       }
     } finally {
       setLoading(false);

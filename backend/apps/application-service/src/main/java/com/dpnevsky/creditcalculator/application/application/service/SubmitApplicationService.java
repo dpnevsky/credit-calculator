@@ -9,6 +9,7 @@ import com.dpnevsky.creditcalculator.application.infrastructure.persistence.enti
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ScoringSnapshotEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationRepository;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationSubmitDataRepository;
+import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.OfferRepository;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ScoringSnapshotRepository;
 import com.dpnevsky.creditcalculator.contracts.scoring.api.ScoringEvaluationRequest;
 import com.dpnevsky.creditcalculator.contracts.scoring.api.ScoringEvaluationResponse;
@@ -28,17 +29,23 @@ public class SubmitApplicationService {
     private final ApplicationRepository applicationRepository;
     private final ApplicationSubmitDataRepository applicationSubmitDataRepository;
     private final ScoringSnapshotRepository scoringSnapshotRepository;
+    private final OfferRepository offerRepository;
+    private final CreatePreliminaryOffersService createPreliminaryOffersService;
     private final ScoringClient scoringClient;
 
     public SubmitApplicationService(
             ApplicationRepository applicationRepository,
             ApplicationSubmitDataRepository applicationSubmitDataRepository,
             ScoringSnapshotRepository scoringSnapshotRepository,
+            OfferRepository offerRepository,
+            CreatePreliminaryOffersService createPreliminaryOffersService,
             ScoringClient scoringClient
     ) {
         this.applicationRepository = applicationRepository;
         this.applicationSubmitDataRepository = applicationSubmitDataRepository;
         this.scoringSnapshotRepository = scoringSnapshotRepository;
+        this.offerRepository = offerRepository;
+        this.createPreliminaryOffersService = createPreliminaryOffersService;
         this.scoringClient = scoringClient;
     }
 
@@ -47,11 +54,12 @@ public class SubmitApplicationService {
         ApplicationEntity existingApplication = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new ApplicationNotFoundException(applicationId));
 
-        if ("PRESCORING_REJECTED".equals(existingApplication.getStatus())) {
-            throw new IllegalStateException("Application did not pass prescoring and cannot be submitted");
+        if (!"DRAFT".equals(existingApplication.getStatus())) {
+            throw new IllegalStateException("Only draft applications can be submitted for scoring");
         }
 
         OffsetDateTime now = OffsetDateTime.now();
+        String normalizedAccountNumber = normalizeAccountNumber(request.accountNumber());
 
         ScoringEvaluationRequest scoringRequest = new ScoringEvaluationRequest(
                 UUID.randomUUID(),
@@ -83,7 +91,7 @@ public class SubmitApplicationService {
                         request.employment().workExperienceCurrent()
                 ),
 
-                request.accountNumber(),
+                normalizedAccountNumber,
 
                 new ScoringEvaluationRequest.LoanRequest(
                         existingApplication.getAmount(),
@@ -110,7 +118,7 @@ public class SubmitApplicationService {
                 request.dependentAmount(),
                 request.passportIssueDate(),
                 request.passportIssueBranch(),
-                request.accountNumber(),
+                normalizedAccountNumber,
                 request.employment().employmentStatus().name(),
                 request.employment().employerInn(),
                 request.employment().salary(),
@@ -124,6 +132,17 @@ public class SubmitApplicationService {
         String applicationStatus = "APPROVED".equals(scoringResponse.decision())
                 ? SCORING_COMPLETED_STATUS
                 : SCORING_REJECTED_STATUS;
+
+        if ("APPROVED".equals(scoringResponse.decision())) {
+            createPreliminaryOffersService.create(
+                    existingApplication.getId(),
+                    scoringResponse.maxApprovedAmount(),
+                    scoringResponse.maxTermMonths(),
+                    scoringResponse.baseInterestRate()
+            );
+        } else {
+            offerRepository.deleteAllByApplicationId(existingApplication.getId());
+        }
 
         ApplicationEntity updatedApplication = new ApplicationEntity(
                 existingApplication.getId(),
@@ -170,5 +189,12 @@ public class SubmitApplicationService {
                 scoringResponse.baseInterestRate(),
                 scoringResponse.reasons()
         );
+    }
+
+    private String normalizeAccountNumber(String accountNumber) {
+        if (accountNumber == null || accountNumber.isBlank()) {
+            return null;
+        }
+        return accountNumber;
     }
 }

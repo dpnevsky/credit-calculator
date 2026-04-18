@@ -39,7 +39,7 @@ public class ApplicationSubmitDataEntity {
     @Column(name = "passport_issue_branch", nullable = false, length = 255)
     private String passportIssueBranch;
 
-    @Column(name = "account_number", nullable = false, length = 64)
+    @Column(name = "account_number", length = 64)
     private String accountNumber;
 
     @Column(name = "employment_status", nullable = false, length = 32)
