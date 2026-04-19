@@ -4,18 +4,47 @@ import { useAuth } from '../context/AuthContext';
 import type { RegistrationPayload } from '../services/auth.service';
 import './Auth.css';
 
-const REGISTRATION_PROFILE_KEY = 'cc_registration_profile';
+interface RegisterFormState {
+  email: string;
+  firstName: string;
+  lastName: string;
+  middleName: string;
+  birthDate: string;
+  password: string;
+  confirmPassword: string;
+}
+
+const INITIAL_FORM_STATE: RegisterFormState = {
+  email: '',
+  firstName: '',
+  lastName: '',
+  middleName: '',
+  birthDate: '',
+  password: '',
+  confirmPassword: '',
+};
+
+const buildRegistrationPayload = (form: RegisterFormState): RegistrationPayload => ({
+  email: form.email.trim(),
+  password: form.password,
+  firstName: form.firstName.trim(),
+  lastName: form.lastName.trim(),
+  middleName: form.middleName.trim(),
+  birthDate: form.birthDate.trim(),
+});
+
+const validateRegisterForm = (form: RegisterFormState): string | null => {
+  if (form.password !== form.confirmPassword) {
+    return 'Пароли не совпадают';
+  }
+
+  return null;
+};
 
 const Register: React.FC = () => {
   const { register, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [middleName, setMiddleName] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [form, setForm] = useState<RegisterFormState>(INITIAL_FORM_STATE);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -25,36 +54,27 @@ const Register: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const buildRegistrationPayload = (): RegistrationPayload => ({
-    email: email.trim(),
-    password,
-    firstName: firstName.trim(),
-    lastName: lastName.trim(),
-    middleName: middleName.trim(),
-    birthDate: birthDate.trim(),
-  });
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
-    if (password !== confirmPassword) {
-      setError('Пароли не совпадают');
+
+    const validationError = validateRegisterForm(form);
+    if (validationError) {
+      setError(validationError);
       return;
     }
+
     setSubmitting(true);
     try {
-      const payload = buildRegistrationPayload();
-      await register(payload);
-      localStorage.setItem(
-        REGISTRATION_PROFILE_KEY,
-        JSON.stringify({
-          email: payload.email,
-          firstName: payload.firstName,
-          lastName: payload.lastName,
-          middleName: payload.middleName,
-          birthDate: payload.birthDate,
-        }),
-      );
+      await register(buildRegistrationPayload(form));
       navigate('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось зарегистрироваться');
@@ -73,9 +93,10 @@ const Register: React.FC = () => {
             <label htmlFor="register-email">Email</label>
             <input
               id="register-email"
+              name="email"
               type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              value={form.email}
+              onChange={handleChange}
               required
               autoComplete="email"
             />
@@ -84,9 +105,10 @@ const Register: React.FC = () => {
             <label htmlFor="register-firstname">Имя</label>
             <input
               id="register-firstname"
+              name="firstName"
               type="text"
-              value={firstName}
-              onChange={(event) => setFirstName(event.target.value)}
+              value={form.firstName}
+              onChange={handleChange}
               required
               autoComplete="given-name"
             />
@@ -95,9 +117,10 @@ const Register: React.FC = () => {
             <label htmlFor="register-lastname">Фамилия</label>
             <input
               id="register-lastname"
+              name="lastName"
               type="text"
-              value={lastName}
-              onChange={(event) => setLastName(event.target.value)}
+              value={form.lastName}
+              onChange={handleChange}
               required
               autoComplete="family-name"
             />
@@ -106,9 +129,10 @@ const Register: React.FC = () => {
             <label htmlFor="register-middlename">Отчество</label>
             <input
               id="register-middlename"
+              name="middleName"
               type="text"
-              value={middleName}
-              onChange={(event) => setMiddleName(event.target.value)}
+              value={form.middleName}
+              onChange={handleChange}
               autoComplete="additional-name"
             />
           </div>
@@ -116,9 +140,10 @@ const Register: React.FC = () => {
             <label htmlFor="register-birthdate">Дата рождения</label>
             <input
               id="register-birthdate"
+              name="birthDate"
               type="date"
-              value={birthDate}
-              onChange={(event) => setBirthDate(event.target.value)}
+              value={form.birthDate}
+              onChange={handleChange}
               required
               autoComplete="bday"
             />
@@ -127,10 +152,11 @@ const Register: React.FC = () => {
             <label htmlFor="register-password">Пароль</label>
             <input
               id="register-password"
+              name="password"
               type="password"
               minLength={8}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              value={form.password}
+              onChange={handleChange}
               required
               autoComplete="new-password"
             />
@@ -139,10 +165,11 @@ const Register: React.FC = () => {
             <label htmlFor="register-password-confirm">Повторите пароль</label>
             <input
               id="register-password-confirm"
+              name="confirmPassword"
               type="password"
               minLength={8}
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
+              value={form.confirmPassword}
+              onChange={handleChange}
               required
               autoComplete="new-password"
             />
