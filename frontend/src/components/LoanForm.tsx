@@ -1,46 +1,76 @@
-import React, { useState } from 'react';
+import { useState, type ChangeEvent, type FC, type FormEvent } from 'react';
+import type { LoanCalculationInput } from '../features/calculator/model/types';
 import './LoanForm.css';
 
-interface FormData {
-  amount: number;
-  months: number;
-  rate: number;
-  paymentType: 'annuity' | 'differentiated';
+interface LoanFormState {
+  amount: string;
+  months: string;
+  rate: string;
+  paymentType: LoanCalculationInput['paymentType'];
 }
 
 interface LoanFormProps {
-  onCalculate: (data: FormData) => void;
+  onCalculate: (data: LoanCalculationInput) => void;
   onClear: () => void;
 }
 
-const LoanForm: React.FC<LoanFormProps> = ({ onCalculate, onClear }) => {
-  const [formData, setFormData] = useState<FormData>({
-    amount: 1000000,
-    months: 12,
-    rate: 15.5,
-    paymentType: 'annuity',
-  });
+const INITIAL_FORM_STATE: LoanFormState = {
+  amount: '1000000',
+  months: '12',
+  rate: '15.5',
+  paymentType: 'annuity',
+};
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type } = e.target;
+const CLEARED_FORM_STATE: LoanFormState = {
+  amount: '0',
+  months: '0',
+  rate: '0',
+  paymentType: 'annuity',
+};
+
+const LoanForm: FC<LoanFormProps> = ({ onCalculate, onClear }) => {
+  const [formData, setFormData] = useState<LoanFormState>(INITIAL_FORM_STATE);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'number' ? parseFloat(value) || 0 : value,
+      [name]: value,
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    onCalculate(formData);
+
+    if (formData.amount.trim() === '' || formData.months.trim() === '' || formData.rate.trim() === '') {
+      return;
+    }
+
+    const amount = Number(formData.amount);
+    const months = Number(formData.months);
+    const rate = Number(formData.rate);
+
+    if (
+      !Number.isFinite(amount) ||
+      !Number.isFinite(months) ||
+      !Number.isFinite(rate) ||
+      amount < 0 ||
+      months < 1 ||
+      rate < 0
+    ) {
+      return;
+    }
+
+    onCalculate({
+      amount,
+      months,
+      rate,
+      paymentType: formData.paymentType,
+    });
   };
 
   const handleClear = () => {
-    setFormData({
-      amount: 0,
-      months: 0,
-      rate: 0,
-      paymentType: 'annuity',
-    });
+    setFormData(CLEARED_FORM_STATE);
     onClear();
   };
 

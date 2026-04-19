@@ -1,30 +1,16 @@
-import React from 'react';
+import type { FC } from 'react';
+import type { CalculationResult } from '../features/calculator/model/types';
 import './Result.css';
-
-interface ResultProps {
-  monthlyPayment?: number;
-  totalPayment?: number;
-  overpayment?: number;
-  paymentSchedule?: Array<{
-    month: number;
-    payment: number;
-    principal: number;
-    interest: number;
-    balance: number;
-  }>;
-}
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(value);
 
-const Result: React.FC<ResultProps> = ({
+const Result: FC<CalculationResult> = ({
   monthlyPayment,
   totalPayment,
   overpayment,
   paymentSchedule,
 }) => {
-  if (monthlyPayment === undefined) return null;
-
   return (
     <div className="result-card">
       <h3 className="result-title">Результаты расчёта</h3>
@@ -35,14 +21,14 @@ const Result: React.FC<ResultProps> = ({
         </div>
         <div className="result-item">
           <span className="result-label">Общая сумма выплат</span>
-          <span className="result-value">{totalPayment !== undefined ? formatMoney(totalPayment) : '—'}</span>
+          <span className="result-value">{formatMoney(totalPayment)}</span>
         </div>
         <div className="result-item">
           <span className="result-label">Переплата</span>
-          <span className="result-value result-overpayment">{overpayment !== undefined ? formatMoney(overpayment) : '—'}</span>
+          <span className="result-value result-overpayment">{formatMoney(overpayment)}</span>
         </div>
       </div>
-      {paymentSchedule && paymentSchedule.length > 0 && (
+      {paymentSchedule.length > 0 && (
         <div className="result-schedule">
           <h4 className="result-schedule-title">График платежей по месяцам</h4>
           <div className="result-table-wrapper">
