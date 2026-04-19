@@ -114,9 +114,10 @@ public class KeycloakAuthService {
         if (request.middleName() != null && !request.middleName().isBlank()) {
             attributes.put("middleName", List.of(request.middleName()));
         }
-        if (request.birthDate() != null && !request.birthDate().isBlank()) {
-            attributes.put("birthDate", List.of(request.birthDate()));
-            attributes.put("birthdate", List.of(request.birthDate()));
+        if (request.birthDate() != null) {
+            String birthDate = request.birthDate().toString();
+            attributes.put("birthDate", List.of(birthDate));
+            attributes.put("birthdate", List.of(birthDate));
         }
         if (!attributes.isEmpty()) {
             payload.put("attributes", attributes);

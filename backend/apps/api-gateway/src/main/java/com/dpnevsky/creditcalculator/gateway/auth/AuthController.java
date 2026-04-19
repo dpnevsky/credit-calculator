@@ -26,21 +26,21 @@ public class AuthController {
     public Mono<ResponseEntity<AuthDtos.AuthResponse>> login(@Valid @RequestBody AuthDtos.LoginRequest request) {
         return authService.login(request.username(), request.password())
                 .map(ResponseEntity::ok)
-                .onErrorResume(WebClientResponseException.class, this::mapError);
+                .onErrorResume(WebClientResponseException.class, this::mapLoginError);
     }
 
     @PostMapping("/register")
     public Mono<ResponseEntity<AuthDtos.AuthResponse>> register(@Valid @RequestBody AuthDtos.RegisterRequest request) {
         return authService.register(request)
                 .map(response -> ResponseEntity.status(HttpStatus.CREATED).body(response))
-                .onErrorResume(WebClientResponseException.class, this::mapError);
+                .onErrorResume(WebClientResponseException.class, this::mapRegisterError);
     }
 
     @PostMapping("/refresh")
     public Mono<ResponseEntity<AuthDtos.AuthResponse>> refresh(@Valid @RequestBody AuthDtos.RefreshRequest request) {
         return authService.refresh(request.refreshToken())
                 .map(ResponseEntity::ok)
-                .onErrorResume(WebClientResponseException.class, this::mapError);
+                .onErrorResume(WebClientResponseException.class, this::mapRefreshError);
     }
 
     @GetMapping("/me")
@@ -63,11 +63,27 @@ public class AuthController {
                         Mono.just(new ResponseEntity<Void>(exception.getStatusCode())));
     }
 
-    private Mono<ResponseEntity<AuthDtos.AuthResponse>> mapError(WebClientResponseException exception) {
+    private Mono<ResponseEntity<AuthDtos.AuthResponse>> mapLoginError(WebClientResponseException exception) {
+        HttpStatus status = (HttpStatus) exception.getStatusCode();
+        if (status == HttpStatus.BAD_REQUEST || status == HttpStatus.UNAUTHORIZED) {
+            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        }
+        return Mono.just(ResponseEntity.status(HttpStatus.BAD_GATEWAY).build());
+    }
+
+    private Mono<ResponseEntity<AuthDtos.AuthResponse>> mapRegisterError(WebClientResponseException exception) {
         HttpStatus status = (HttpStatus) exception.getStatusCode();
         if (status == HttpStatus.CONFLICT) {
             return Mono.just(ResponseEntity.status(HttpStatus.CONFLICT).build());
         }
+        if (status == HttpStatus.BAD_REQUEST) {
+            return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).build());
+        }
+        return Mono.just(ResponseEntity.status(HttpStatus.BAD_GATEWAY).build());
+    }
+
+    private Mono<ResponseEntity<AuthDtos.AuthResponse>> mapRefreshError(WebClientResponseException exception) {
+        HttpStatus status = (HttpStatus) exception.getStatusCode();
         if (status == HttpStatus.BAD_REQUEST || status == HttpStatus.UNAUTHORIZED) {
             return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
         }

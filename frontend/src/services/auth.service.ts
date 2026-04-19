@@ -36,6 +36,8 @@ interface TokenResponse {
   tokenType: string;
 }
 
+type AuthAction = 'login' | 'register' | 'refresh';
+
 const ACCESS_TOKEN_KEY = 'cc_access_token';
 const REFRESH_TOKEN_KEY = 'cc_refresh_token';
 let currentUser: User | null = null;
@@ -74,15 +76,22 @@ function toUser(profile: CurrentUserProfileResponse, token: string): User {
   };
 }
 
-async function parseResponse(response: Response): Promise<TokenResponse> {
+async function parseResponse(response: Response, action: AuthAction): Promise<TokenResponse> {
   if (!response.ok) {
-    if (response.status === 401) {
+    if (action === 'login' && response.status === 401) {
       throw new Error('Неверный логин или пароль');
     }
-    if (response.status === 409) {
+    if (action === 'register' && response.status === 409) {
       throw new Error('Пользователь с таким email уже существует');
     }
-    throw new Error('Ошибка авторизации. Попробуйте снова');
+    if (action === 'register' && response.status === 400) {
+      throw new Error('Проверьте корректность регистрационных данных');
+    }
+    if (action === 'refresh' && response.status === 401) {
+      throw new Error('Не удалось обновить сессию');
+    }
+
+    throw new Error(action === 'register' ? 'Ошибка регистрации. Попробуйте снова' : 'Ошибка авторизации. Попробуйте снова');
   }
   return response.json() as Promise<TokenResponse>;
 }
@@ -130,7 +139,7 @@ const AuthService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
-    const tokens = await parseResponse(response);
+    const tokens = await parseResponse(response, 'login');
     saveTokens(tokens);
 
     try {
@@ -148,7 +157,7 @@ const AuthService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const tokens = await parseResponse(response);
+    const tokens = await parseResponse(response, 'register');
     saveTokens(tokens);
 
     try {
@@ -189,7 +198,7 @@ const AuthService = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken }),
       });
-      const tokens = await parseResponse(response);
+      const tokens = await parseResponse(response, 'refresh');
       saveTokens(tokens);
       if (currentUser) {
         currentUser = {

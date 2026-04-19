@@ -1,9 +1,11 @@
 package com.dpnevsky.creditcalculator.gateway.auth;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public final class AuthDtos {
@@ -22,7 +24,7 @@ public final class AuthDtos {
             @NotBlank @Size(max = 64) String firstName,
             @NotBlank @Size(max = 64) String lastName,
             @Size(max = 64) String middleName,
-            @Size(max = 32) String birthDate
+            @JsonFormat(pattern = "yyyy-MM-dd") LocalDate birthDate
     ) {
     }
 

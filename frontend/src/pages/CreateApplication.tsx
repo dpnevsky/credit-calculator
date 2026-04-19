@@ -7,7 +7,6 @@ import './Application.css';
 
 const APPLICATION_FORM_DRAFT_KEY = 'cc_create_application_form_draft';
 const SCORING_FORM_DRAFT_KEY = 'cc_create_application_scoring_draft';
-const REGISTRATION_PROFILE_KEY = 'cc_registration_profile';
 
 const getDefaultPassportIssueDate = (): string => {
   const date = new Date();
@@ -79,24 +78,13 @@ const CreateApplication: React.FC = () => {
       return;
     }
 
-    const registrationProfileRaw = localStorage.getItem(REGISTRATION_PROFILE_KEY);
-    let registrationProfile: Partial<CreateApplicationRequest> | null = null;
-
-    if (registrationProfileRaw) {
-      try {
-        registrationProfile = JSON.parse(registrationProfileRaw) as Partial<CreateApplicationRequest>;
-      } catch (parseError) {
-        console.warn('Не удалось прочитать профиль регистрации', parseError);
-      }
-    }
-
     setForm((prev) => ({
       ...prev,
-      email: prev.email || registrationProfile?.email || user.email || '',
-      firstName: prev.firstName || registrationProfile?.firstName || user.firstName || user.name || '',
-      lastName: prev.lastName || registrationProfile?.lastName || user.lastName || '',
-      middleName: prev.middleName || registrationProfile?.middleName || user.middleName || '',
-      birthDate: prev.birthDate || registrationProfile?.birthDate || user.birthDate || '',
+      email: prev.email || user.email || '',
+      firstName: prev.firstName || user.firstName || user.name || '',
+      lastName: prev.lastName || user.lastName || '',
+      middleName: prev.middleName || user.middleName || '',
+      birthDate: prev.birthDate || user.birthDate || '',
     }));
   }, [user]);
 
