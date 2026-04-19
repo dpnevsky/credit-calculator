@@ -149,3 +149,13 @@
   color: #1a1f36;
   font-weight: 500;
 }
+
+.profile-actions {
+  margin-top: 16px;
+}
+
+.profile-link-button {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}

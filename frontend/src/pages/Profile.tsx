@@ -1,23 +1,22 @@
 import React from 'react';
-import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 
-const formatBirthDate = (value: string) => {
+const NOT_SPECIFIED_LABEL = 'Не указано';
+
+const formatBirthDate = (value: string): string => {
   if (!value) {
-    return 'Не указано';
+    return NOT_SPECIFIED_LABEL;
   }
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
     return value;
   }
 
-  return date.toLocaleDateString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  const [, year, month, day] = match;
+  return `${day}.${month}.${year}`;
 };
 
 const Profile: React.FC = () => {
@@ -31,27 +30,25 @@ const Profile: React.FC = () => {
     <div className="profile-page">
       <div className="profile-card">
         <h2>Профиль пользователя</h2>
-        {user && (
-          <div className="profile-info">
-            <div className="profile-field">
-              <span className="profile-label">ФИО</span>
-              <span className="profile-value">{fullName || user.name || 'Не указано'}</span>
-            </div>
-            <div className="profile-field">
-              <span className="profile-label">Email</span>
-              <span className="profile-value">{user.email}</span>
-            </div>
-            <div className="profile-field">
-              <span className="profile-label">Дата рождения</span>
-              <span className="profile-value">{formatBirthDate(user.birthDate || '')}</span>
-            </div>
-            <div style={{ marginTop: '16px' }}>
-              <Link to="/applications" className="auth-button" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
-                Мои заявки
-              </Link>
-            </div>
+        <div className="profile-info">
+          <div className="profile-field">
+            <span className="profile-label">ФИО</span>
+            <span className="profile-value">{fullName || user?.name || NOT_SPECIFIED_LABEL}</span>
           </div>
-        )}
+          <div className="profile-field">
+            <span className="profile-label">Email</span>
+            <span className="profile-value">{user?.email || NOT_SPECIFIED_LABEL}</span>
+          </div>
+          <div className="profile-field">
+            <span className="profile-label">Дата рождения</span>
+            <span className="profile-value">{formatBirthDate(user?.birthDate || '')}</span>
+          </div>
+          <div className="profile-actions">
+            <Link to="/applications" className="auth-button profile-link-button">
+              Мои заявки
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );
