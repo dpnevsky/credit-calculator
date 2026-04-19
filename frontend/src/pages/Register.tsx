@@ -24,6 +24,8 @@ const INITIAL_FORM_STATE: RegisterFormState = {
   confirmPassword: '',
 };
 
+const getTodayDate = (): string => new Date().toISOString().slice(0, 10);
+
 const buildRegistrationPayload = (form: RegisterFormState): RegistrationPayload => ({
   email: form.email.trim(),
   password: form.password,
@@ -34,6 +36,10 @@ const buildRegistrationPayload = (form: RegisterFormState): RegistrationPayload 
 });
 
 const validateRegisterForm = (form: RegisterFormState): string | null => {
+  if (form.birthDate && form.birthDate > getTodayDate()) {
+    return 'Дата рождения не может быть в будущем';
+  }
+
   if (form.password !== form.confirmPassword) {
     return 'Пароли не совпадают';
   }
@@ -144,6 +150,7 @@ const Register: React.FC = () => {
               type="date"
               value={form.birthDate}
               onChange={handleChange}
+              max={getTodayDate()}
               required
               autoComplete="bday"
             />

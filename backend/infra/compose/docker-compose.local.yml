@@ -113,7 +113,7 @@ services:
       - start-dev
       - --import-realm
     volumes:
-      - ../keycloak/realm:/opt/keycloak/data/import:ro
+      - ../keycloak/realm/credit-calculator-realm.json:/opt/keycloak/data/import/credit-calculator-realm.json:ro
 
 volumes:
   postgres-application-data:

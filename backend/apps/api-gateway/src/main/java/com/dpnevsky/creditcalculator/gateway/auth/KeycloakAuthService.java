@@ -22,6 +22,8 @@ public class KeycloakAuthService {
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE = new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<List<Map<String, Object>>> MAP_TYPE_LIST =
             new ParameterizedTypeReference<>() {};
+    private static final String MIDDLE_NAME_ATTRIBUTE = "middleName";
+    private static final String BIRTH_DATE_ATTRIBUTE = "birthDate";
 
     private final WebClient webClient;
     private final KeycloakAuthProperties properties;
@@ -83,7 +85,7 @@ public class KeycloakAuthService {
         return adminAccessToken()
                 .flatMap(adminToken -> resolveCurrentUserId(adminToken, userId, email)
                         .flatMap(resolvedUserId -> getUser(adminToken, resolvedUserId)
-                                .map(user -> toCurrentUserResponse(user, email, roles))));
+                                .map(user -> toCurrentUserResponse(user, jwt, email, roles))));
     }
 
     private Mono<String> adminAccessToken() {
@@ -112,12 +114,11 @@ public class KeycloakAuthService {
         payload.put("firstName", request.firstName());
         payload.put("lastName", request.lastName());
         if (request.middleName() != null && !request.middleName().isBlank()) {
-            attributes.put("middleName", List.of(request.middleName()));
+            attributes.put(MIDDLE_NAME_ATTRIBUTE, List.of(request.middleName()));
         }
         if (request.birthDate() != null) {
             String birthDate = request.birthDate().toString();
-            attributes.put("birthDate", List.of(birthDate));
-            attributes.put("birthdate", List.of(birthDate));
+            attributes.put(BIRTH_DATE_ATTRIBUTE, List.of(birthDate));
         }
         if (!attributes.isEmpty()) {
             payload.put("attributes", attributes);
@@ -286,6 +287,7 @@ public class KeycloakAuthService {
 
     private AuthDtos.CurrentUserResponse toCurrentUserResponse(
             Map<String, Object> user,
+            Jwt jwt,
             String fallbackEmail,
             List<String> roles
     ) {
@@ -293,30 +295,39 @@ public class KeycloakAuthService {
         String email = nonBlankOrFallback(getString(user, "email"), fallbackEmail);
         String firstName = getString(user, "firstName");
         String lastName = getString(user, "lastName");
-        Map<String, List<String>> attributes = getAttributes(user);
-        String middleName = getFirstAttribute(attributes, "middleName", "middle_name");
-        String birthDate = getFirstAttribute(attributes, "birthDate", "birthdate", "birth_date");
+        Map<String, Object> attributes = getAttributes(user);
+        String middleName = nonBlankOrFallback(
+                getFirstAttribute(attributes, MIDDLE_NAME_ATTRIBUTE, "middle_name"),
+                firstNonBlankClaim(jwt, "middle_name", "middleName")
+        );
+        String birthDate = nonBlankOrFallback(
+                getFirstAttribute(attributes, BIRTH_DATE_ATTRIBUTE, "birthdate", "birth_date"),
+                firstNonBlankClaim(jwt, "birthdate", "birth_date", "birthDate")
+        );
 
         return new AuthDtos.CurrentUserResponse(id, email, firstName, lastName, middleName, birthDate, roles);
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, List<String>> getAttributes(Map<String, Object> user) {
+    private Map<String, Object> getAttributes(Map<String, Object> user) {
         Object attributes = user.get("attributes");
         if (attributes instanceof Map<?, ?> attributesMap) {
-            return (Map<String, List<String>>) attributesMap;
+            return (Map<String, Object>) attributesMap;
         }
         return Collections.emptyMap();
     }
 
-    private String getFirstAttribute(Map<String, List<String>> attributes, String... keys) {
+    private String getFirstAttribute(Map<String, Object> attributes, String... keys) {
         for (String key : keys) {
-            List<String> values = attributes.get(key);
-            if (values != null && !values.isEmpty()) {
-                String value = values.get(0);
+            Object rawValue = attributes.get(key);
+            if (rawValue instanceof List<?> values && !values.isEmpty()) {
+                String value = Optional.ofNullable(values.get(0)).map(Object::toString).orElse("");
                 if (value != null && !value.isBlank()) {
                     return value;
                 }
+            }
+            if (rawValue instanceof String value && !value.isBlank()) {
+                return value;
             }
         }
         return "";
@@ -328,6 +339,16 @@ public class KeycloakAuthService {
 
     private String nonBlankOrFallback(String value, String fallback) {
         return value != null && !value.isBlank() ? value : Optional.ofNullable(fallback).orElse("");
+    }
+
+    private String firstNonBlankClaim(Jwt jwt, String... claimNames) {
+        for (String claimName : claimNames) {
+            String claimValue = jwt.getClaimAsString(claimName);
+            if (claimValue != null && !claimValue.isBlank()) {
+                return claimValue;
+            }
+        }
+        return "";
     }
 
     @SuppressWarnings("unchecked")
