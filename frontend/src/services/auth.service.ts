@@ -37,6 +37,7 @@ interface TokenResponse {
 }
 
 type AuthAction = 'login' | 'register' | 'refresh';
+type ProfileLoadAction = 'login' | 'register';
 
 const ACCESS_TOKEN_KEY = 'cc_access_token';
 const REFRESH_TOKEN_KEY = 'cc_refresh_token';
@@ -91,8 +92,13 @@ async function parseResponse(response: Response, action: AuthAction): Promise<To
       throw new Error('Не удалось обновить сессию');
     }
 
-    throw new Error(action === 'register' ? 'Ошибка регистрации. Попробуйте снова' : 'Ошибка авторизации. Попробуйте снова');
+    throw new Error(
+      action === 'register'
+        ? 'Ошибка регистрации. Попробуйте снова'
+        : 'Ошибка авторизации. Попробуйте снова',
+    );
   }
+
   return response.json() as Promise<TokenResponse>;
 }
 
@@ -100,6 +106,7 @@ async function parseProfileResponse(response: Response): Promise<CurrentUserProf
   if (!response.ok) {
     throw new Error('PROFILE_FETCH_FAILED');
   }
+
   return response.json() as Promise<CurrentUserProfileResponse>;
 }
 
@@ -114,6 +121,27 @@ async function fetchCurrentUserProfile(token: string): Promise<User> {
   const user = toUser(profile, token);
   currentUser = user;
   return user;
+}
+
+function getProfileLoadErrorMessage(action: ProfileLoadAction): string {
+  return action === 'register'
+    ? 'Аккаунт создан, но профиль не удалось загрузить. Попробуйте войти.'
+    : 'Вход выполнен, но профиль не удалось загрузить. Попробуйте войти снова.';
+}
+
+async function loadCurrentUserAfterAuth(
+  tokens: TokenResponse,
+  action: ProfileLoadAction,
+): Promise<User> {
+  saveTokens(tokens);
+
+  try {
+    return await fetchCurrentUserProfile(tokens.accessToken);
+  } catch {
+    clearTokens();
+    currentUser = null;
+    throw new Error(getProfileLoadErrorMessage(action));
+  }
 }
 
 const AuthService = {
@@ -140,15 +168,7 @@ const AuthService = {
       body: JSON.stringify({ username, password }),
     });
     const tokens = await parseResponse(response, 'login');
-    saveTokens(tokens);
-
-    try {
-      return await fetchCurrentUserProfile(tokens.accessToken);
-    } catch {
-      clearTokens();
-      currentUser = null;
-      throw new Error('Не удалось загрузить профиль пользователя');
-    }
+    return loadCurrentUserAfterAuth(tokens, 'login');
   },
 
   async register(payload: RegistrationPayload): Promise<User | null> {
@@ -158,15 +178,7 @@ const AuthService = {
       body: JSON.stringify(payload),
     });
     const tokens = await parseResponse(response, 'register');
-    saveTokens(tokens);
-
-    try {
-      return await fetchCurrentUserProfile(tokens.accessToken);
-    } catch {
-      clearTokens();
-      currentUser = null;
-      throw new Error('Не удалось загрузить профиль пользователя');
-    }
+    return loadCurrentUserAfterAuth(tokens, 'register');
   },
 
   async logout(): Promise<void> {
@@ -178,6 +190,7 @@ const AuthService = {
         body: JSON.stringify({ refreshToken }),
       });
     }
+
     clearTokens();
     currentUser = null;
   },
@@ -192,6 +205,7 @@ const AuthService = {
     if (!refreshToken) {
       return false;
     }
+
     try {
       const response = await fetch('/api/auth/refresh', {
         method: 'POST',
@@ -201,10 +215,7 @@ const AuthService = {
       const tokens = await parseResponse(response, 'refresh');
       saveTokens(tokens);
       if (currentUser) {
-        currentUser = {
-          ...currentUser,
-          token: tokens.accessToken,
-        };
+        await fetchCurrentUserProfile(tokens.accessToken);
       }
       return true;
     } catch {

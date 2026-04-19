@@ -296,14 +296,8 @@ public class KeycloakAuthService {
         String firstName = getString(user, "firstName");
         String lastName = getString(user, "lastName");
         Map<String, Object> attributes = getAttributes(user);
-        String middleName = nonBlankOrFallback(
-                getFirstAttribute(attributes, MIDDLE_NAME_ATTRIBUTE, "middle_name"),
-                firstNonBlankClaim(jwt, "middle_name", "middleName")
-        );
-        String birthDate = nonBlankOrFallback(
-                getFirstAttribute(attributes, BIRTH_DATE_ATTRIBUTE, "birthdate", "birth_date"),
-                firstNonBlankClaim(jwt, "birthdate", "birth_date", "birthDate")
-        );
+        String middleName = getFirstAttribute(attributes, MIDDLE_NAME_ATTRIBUTE, "middle_name");
+        String birthDate = getFirstAttribute(attributes, BIRTH_DATE_ATTRIBUTE, "birthdate");
 
         return new AuthDtos.CurrentUserResponse(id, email, firstName, lastName, middleName, birthDate, roles);
     }
@@ -339,16 +333,6 @@ public class KeycloakAuthService {
 
     private String nonBlankOrFallback(String value, String fallback) {
         return value != null && !value.isBlank() ? value : Optional.ofNullable(fallback).orElse("");
-    }
-
-    private String firstNonBlankClaim(Jwt jwt, String... claimNames) {
-        for (String claimName : claimNames) {
-            String claimValue = jwt.getClaimAsString(claimName);
-            if (claimValue != null && !claimValue.isBlank()) {
-                return claimValue;
-            }
-        }
-        return "";
     }
 
     @SuppressWarnings("unchecked")

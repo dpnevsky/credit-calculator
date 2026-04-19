@@ -24,7 +24,14 @@ const INITIAL_FORM_STATE: RegisterFormState = {
   confirmPassword: '',
 };
 
-const getTodayDate = (): string => new Date().toISOString().slice(0, 10);
+const toLocalDateInputValue = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getTodayDate = (): string => toLocalDateInputValue(new Date());
 
 const buildRegistrationPayload = (form: RegisterFormState): RegistrationPayload => ({
   email: form.email.trim(),
@@ -56,7 +63,7 @@ const Register: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -81,9 +88,8 @@ const Register: React.FC = () => {
     setSubmitting(true);
     try {
       await register(buildRegistrationPayload(form));
-      navigate('/');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось зарегистрироваться');
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Не удалось зарегистрироваться');
     } finally {
       setSubmitting(false);
     }
