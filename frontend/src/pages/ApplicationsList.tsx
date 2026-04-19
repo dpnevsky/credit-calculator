@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../services/api.service';
 import type { ApplicationResponse } from '../types/api';
@@ -10,43 +10,61 @@ import {
 } from '../utils/applicationStatus';
 import './Application.css';
 
+const formatMoney = (value: number) =>
+  new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'RUB',
+    maximumFractionDigits: 0,
+  }).format(value);
+
+const formatDate = (value: string): string => {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) {
+    return value;
+  }
+
+  const [, year, month, day] = match;
+  return `${day}.${month}.${year}`;
+};
+
 const ApplicationsList: React.FC = () => {
   const navigate = useNavigate();
   const [applications, setApplications] = useState<ApplicationResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadApplications = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await ApiService.getApplications();
-        setApplications(result);
-      } catch {
-        setError('Не удалось загрузить список заявок');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadApplications = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-    void loadApplications();
+    try {
+      const result = await ApiService.getApplications();
+      setApplications(result);
+    } catch {
+      setError('Не удалось загрузить список заявок');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const formatMoney = (value: number) =>
-    new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(value);
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
+  useEffect(() => {
+    void loadApplications();
+  }, [loadApplications]);
 
   return (
     <div className="page-container">
       <div className="card">
         <h2>Мои заявки</h2>
         {loading && <p>Загрузка...</p>}
-        {error && <div className="error-banner">{error}</div>}
+
+        {!loading && error && (
+          <div className="applications-error-state">
+            <div className="error-banner">{error}</div>
+            <button type="button" className="btn btn-secondary" onClick={() => void loadApplications()}>
+              Повторить
+            </button>
+          </div>
+        )}
 
         {!loading && !error && applications.length === 0 && (
           <p>У вас пока нет заявок. Создайте первую заявку.</p>
@@ -58,9 +76,10 @@ const ApplicationsList: React.FC = () => {
               const rejectionReasons = getApplicationRejectionReasons(application.status);
 
               return (
-                <div
+                <button
                   key={application.applicationId}
-                  className="application-card"
+                  type="button"
+                  className="application-card application-card-button"
                   onClick={() => navigate(`/applications/${application.applicationId}`)}
                 >
                   <div className="app-card-header">
@@ -98,7 +117,7 @@ const ApplicationsList: React.FC = () => {
                   <div className="app-card-footer">
                     <span className="link-text">Подробнее &rarr;</span>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
