@@ -3,29 +3,46 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 
+interface LoginFormState {
+  email: string;
+  password: string;
+}
+
+const INITIAL_FORM_STATE: LoginFormState = {
+  email: '',
+  password: '',
+};
+
 const Login: React.FC = () => {
   const { login, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [form, setForm] = useState<LoginFormState>(INITIAL_FORM_STATE);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
     setSubmitting(true);
+
     try {
-      await login(username.trim(), password);
-      navigate('/');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось выполнить вход');
+      await login(form.email.trim(), form.password);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Не удалось выполнить вход');
     } finally {
       setSubmitting(false);
     }
@@ -38,23 +55,25 @@ const Login: React.FC = () => {
         {error && <div className="error-message">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="username">Email</label>
+            <label htmlFor="login-email">Email</label>
             <input
-              id="username"
+              id="login-email"
+              name="email"
               type="email"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
+              value={form.email}
+              onChange={handleChange}
               required
               autoComplete="email"
             />
           </div>
           <div className="form-group">
-            <label htmlFor="password">Пароль</label>
+            <label htmlFor="login-password">Пароль</label>
             <input
-              id="password"
+              id="login-password"
+              name="password"
               type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              value={form.password}
+              onChange={handleChange}
               required
               autoComplete="current-password"
             />
