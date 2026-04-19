@@ -2,6 +2,7 @@ package com.dpnevsky.creditcalculator.gateway.auth;
 
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -11,6 +12,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -71,6 +73,17 @@ public class KeycloakAuthService {
                                 .then(assignApplicantRole(adminToken, userId)))
                         .then(login(request.email(), request.password()))
         );
+    }
+
+    public Mono<AuthDtos.CurrentUserResponse> getCurrentUser(Jwt jwt) {
+        String userId = jwt.getSubject();
+        String email = jwt.getClaimAsString("email");
+        List<String> roles = extractRoles(jwt);
+
+        return adminAccessToken()
+                .flatMap(adminToken -> resolveCurrentUserId(adminToken, userId, email)
+                        .flatMap(resolvedUserId -> getUser(adminToken, resolvedUserId)
+                                .map(user -> toCurrentUserResponse(user, email, roles))));
     }
 
     private Mono<String> adminAccessToken() {
@@ -166,6 +179,26 @@ public class KeycloakAuthService {
                         .orElseGet(() -> Mono.error(new IllegalStateException("Created user not found in Keycloak"))));
     }
 
+    private Mono<String> resolveCurrentUserId(String adminToken, String userId, String email) {
+        if (userId != null && !userId.isBlank()) {
+            return Mono.just(userId);
+        }
+
+        if (email != null && !email.isBlank()) {
+            return resolveUserId(adminToken, email);
+        }
+
+        return Mono.error(new IllegalStateException("Authenticated user identity is missing"));
+    }
+
+    private Mono<Map<String, Object>> getUser(String adminToken, String userId) {
+        return webClient.get()
+                .uri("/admin/realms/{realm}/users/{userId}", properties.realm(), userId)
+                .header("Authorization", "Bearer " + adminToken)
+                .retrieve()
+                .bodyToMono(MAP_TYPE);
+    }
+
     private Mono<Map<String, Object>> getRealmRole(String adminToken, String roleName) {
         return webClient.get()
                 .uri("/admin/realms/{realm}/roles/{roleName}", properties.realm(), roleName)
@@ -248,5 +281,63 @@ public class KeycloakAuthService {
                             String secret = (String) secretResponse.get("value");
                             return (secret != null && !secret.isBlank()) ? Mono.just(secret) : Mono.empty();
                         }));
+    }
+
+    private AuthDtos.CurrentUserResponse toCurrentUserResponse(
+            Map<String, Object> user,
+            String fallbackEmail,
+            List<String> roles
+    ) {
+        String id = getString(user, "id");
+        String email = nonBlankOrFallback(getString(user, "email"), fallbackEmail);
+        String firstName = getString(user, "firstName");
+        String lastName = getString(user, "lastName");
+        Map<String, List<String>> attributes = getAttributes(user);
+        String middleName = getFirstAttribute(attributes, "middleName", "middle_name");
+        String birthDate = getFirstAttribute(attributes, "birthDate", "birthdate", "birth_date");
+
+        return new AuthDtos.CurrentUserResponse(id, email, firstName, lastName, middleName, birthDate, roles);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, List<String>> getAttributes(Map<String, Object> user) {
+        Object attributes = user.get("attributes");
+        if (attributes instanceof Map<?, ?> attributesMap) {
+            return (Map<String, List<String>>) attributesMap;
+        }
+        return Collections.emptyMap();
+    }
+
+    private String getFirstAttribute(Map<String, List<String>> attributes, String... keys) {
+        for (String key : keys) {
+            List<String> values = attributes.get(key);
+            if (values != null && !values.isEmpty()) {
+                String value = values.get(0);
+                if (value != null && !value.isBlank()) {
+                    return value;
+                }
+            }
+        }
+        return "";
+    }
+
+    private String getString(Map<String, Object> source, String key) {
+        return Optional.ofNullable(source.get(key)).map(Object::toString).orElse("");
+    }
+
+    private String nonBlankOrFallback(String value, String fallback) {
+        return value != null && !value.isBlank() ? value : Optional.ofNullable(fallback).orElse("");
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> extractRoles(Jwt jwt) {
+        Object realmAccess = jwt.getClaims().get("realm_access");
+        if (realmAccess instanceof Map<?, ?> realmAccessMap) {
+            Object roles = realmAccessMap.get("roles");
+            if (roles instanceof List<?> roleList) {
+                return roleList.stream().map(Object::toString).toList();
+            }
+        }
+        return List.of();
     }
 }

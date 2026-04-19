@@ -17,6 +17,9 @@ public class GatewaySecurityConfig {
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         http.csrf(ServerHttpSecurity.CsrfSpec::disable);
+        http.oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> {})
+        );
 
         if (debugMode) {
             http.authorizeExchange(exchanges -> exchanges
@@ -27,11 +30,9 @@ public class GatewaySecurityConfig {
                     .authorizeExchange(exchanges -> exchanges
                             .pathMatchers("/actuator/**").permitAll()
                             .pathMatchers("/*/actuator/**").permitAll()
-                            .pathMatchers("/api/auth/**").permitAll()
+                            .pathMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/logout").permitAll()
+                            .pathMatchers("/api/auth/me").authenticated()
                             .anyExchange().authenticated()
-                    )
-                    .oauth2ResourceServer(oauth2 -> oauth2
-                            .jwt(jwt -> {})
                     );
         }
 

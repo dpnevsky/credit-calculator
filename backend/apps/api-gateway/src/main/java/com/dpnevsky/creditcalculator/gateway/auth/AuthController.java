@@ -3,6 +3,9 @@ package com.dpnevsky.creditcalculator.gateway.auth;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,6 +41,18 @@ public class AuthController {
         return authService.refresh(request.refreshToken())
                 .map(ResponseEntity::ok)
                 .onErrorResume(WebClientResponseException.class, this::mapError);
+    }
+
+    @GetMapping("/me")
+    public Mono<ResponseEntity<AuthDtos.CurrentUserResponse>> me(@AuthenticationPrincipal Jwt jwt) {
+        if (jwt == null) {
+            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        }
+
+        return authService.getCurrentUser(jwt)
+                .map(ResponseEntity::ok)
+                .onErrorResume(WebClientResponseException.class, exception ->
+                        Mono.just(ResponseEntity.status(exception.getStatusCode()).build()));
     }
 
     @PostMapping("/logout")

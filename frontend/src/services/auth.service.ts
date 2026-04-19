@@ -10,6 +10,16 @@ export interface User {
   roles: string[];
 }
 
+interface CurrentUserProfileResponse {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  middleName: string;
+  birthDate: string;
+  roles: string[];
+}
+
 export interface RegistrationPayload {
   email: string;
   password: string;
@@ -28,53 +38,7 @@ interface TokenResponse {
 
 const ACCESS_TOKEN_KEY = 'cc_access_token';
 const REFRESH_TOKEN_KEY = 'cc_refresh_token';
-
-function parseJwt(token: string): Record<string, unknown> | null {
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) {
-      return null;
-    }
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const json = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((char) => `%${(`00${char.charCodeAt(0).toString(16)}`).slice(-2)}`)
-        .join(''),
-    );
-    return JSON.parse(json) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-function extractUser(token?: string): User | null {
-  if (!token) {
-    return null;
-  }
-  const payload = parseJwt(token);
-  if (!payload) {
-    return null;
-  }
-  const rolesRaw = payload.realm_access as { roles?: string[] } | undefined;
-  const email = (payload.email as string) || (payload.preferred_username as string) || '';
-  const name =
-    (payload.given_name as string) ||
-    (payload.name as string) ||
-    (payload.preferred_username as string) ||
-    '';
-  return {
-    id: (payload.sub as string) || 'unknown',
-    email,
-    name,
-    firstName: (payload.given_name as string) || '',
-    lastName: (payload.family_name as string) || '',
-    middleName: (payload.middle_name as string) || (payload.middleName as string) || '',
-    birthDate: (payload.birthdate as string) || (payload.birth_date as string) || '',
-    token,
-    roles: rolesRaw?.roles || [],
-  };
-}
+let currentUser: User | null = null;
 
 function getAccessToken(): string | undefined {
   return localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined;
@@ -87,6 +51,27 @@ function getRefreshToken(): string | undefined {
 function saveTokens(tokens: TokenResponse): void {
   localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+}
+
+function clearTokens(): void {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+function toUser(profile: CurrentUserProfileResponse, token: string): User {
+  const name = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim();
+
+  return {
+    id: profile.id,
+    email: profile.email,
+    name: name || profile.email,
+    firstName: profile.firstName || '',
+    lastName: profile.lastName || '',
+    middleName: profile.middleName || '',
+    birthDate: profile.birthDate || '',
+    token,
+    roles: profile.roles || [],
+  };
 }
 
 async function parseResponse(response: Response): Promise<TokenResponse> {
@@ -102,10 +87,41 @@ async function parseResponse(response: Response): Promise<TokenResponse> {
   return response.json() as Promise<TokenResponse>;
 }
 
+async function parseProfileResponse(response: Response): Promise<CurrentUserProfileResponse> {
+  if (!response.ok) {
+    throw new Error('PROFILE_FETCH_FAILED');
+  }
+  return response.json() as Promise<CurrentUserProfileResponse>;
+}
+
+async function fetchCurrentUserProfile(token: string): Promise<User> {
+  const response = await fetch('/api/auth/me', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  const profile = await parseProfileResponse(response);
+  const user = toUser(profile, token);
+  currentUser = user;
+  return user;
+}
+
 const AuthService = {
   async init(): Promise<User | null> {
     const token = getAccessToken();
-    return extractUser(token);
+    if (!token) {
+      currentUser = null;
+      return null;
+    }
+
+    try {
+      return await fetchCurrentUserProfile(token);
+    } catch {
+      clearTokens();
+      currentUser = null;
+      return null;
+    }
   },
 
   async login(username: string, password: string): Promise<User | null> {
@@ -116,7 +132,14 @@ const AuthService = {
     });
     const tokens = await parseResponse(response);
     saveTokens(tokens);
-    return extractUser(tokens.accessToken);
+
+    try {
+      return await fetchCurrentUserProfile(tokens.accessToken);
+    } catch {
+      clearTokens();
+      currentUser = null;
+      throw new Error('Не удалось загрузить профиль пользователя');
+    }
   },
 
   async register(payload: RegistrationPayload): Promise<User | null> {
@@ -127,7 +150,14 @@ const AuthService = {
     });
     const tokens = await parseResponse(response);
     saveTokens(tokens);
-    return extractUser(tokens.accessToken);
+
+    try {
+      return await fetchCurrentUserProfile(tokens.accessToken);
+    } catch {
+      clearTokens();
+      currentUser = null;
+      throw new Error('Не удалось загрузить профиль пользователя');
+    }
   },
 
   async logout(): Promise<void> {
@@ -139,8 +169,8 @@ const AuthService = {
         body: JSON.stringify({ refreshToken }),
       });
     }
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    clearTokens();
+    currentUser = null;
   },
 
   getToken(): string | undefined {
@@ -161,16 +191,22 @@ const AuthService = {
       });
       const tokens = await parseResponse(response);
       saveTokens(tokens);
+      if (currentUser) {
+        currentUser = {
+          ...currentUser,
+          token: tokens.accessToken,
+        };
+      }
       return true;
     } catch {
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      clearTokens();
+      currentUser = null;
       return false;
     }
   },
 
   getCurrentUser(): User | null {
-    return extractUser(getAccessToken());
+    return currentUser;
   },
 
   isAuthenticated(): boolean {

@@ -4,6 +4,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 public final class AuthDtos {
     private AuthDtos() {
     }
@@ -39,6 +41,17 @@ public final class AuthDtos {
             String refreshToken,
             long expiresIn,
             String tokenType
+    ) {
+    }
+
+    public record CurrentUserResponse(
+            String id,
+            String email,
+            String firstName,
+            String lastName,
+            String middleName,
+            String birthDate,
+            List<String> roles
     ) {
     }
 }
