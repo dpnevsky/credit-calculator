@@ -19,7 +19,8 @@ public final class AuthDtos {
             @NotBlank @Size(min = 8, max = 128) String password,
             @NotBlank @Size(max = 64) String firstName,
             @NotBlank @Size(max = 64) String lastName,
-            @Size(max = 64) String middleName
+            @Size(max = 64) String middleName,
+            @Size(max = 32) String birthDate
     ) {
     }
 

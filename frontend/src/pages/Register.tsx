@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import type { RegistrationPayload } from '../services/auth.service';
 import './Auth.css';
 
 const REGISTRATION_PROFILE_KEY = 'cc_registration_profile';
@@ -24,6 +25,15 @@ const Register: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
 
+  const buildRegistrationPayload = (): RegistrationPayload => ({
+    email: email.trim(),
+    password,
+    firstName: firstName.trim(),
+    lastName: lastName.trim(),
+    middleName: middleName.trim(),
+    birthDate: birthDate.trim(),
+  });
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
@@ -33,21 +43,17 @@ const Register: React.FC = () => {
     }
     setSubmitting(true);
     try {
-      const normalizedProfile = {
-        email: email.trim(),
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        middleName: middleName.trim(),
-        birthDate,
-      };
-      localStorage.setItem(REGISTRATION_PROFILE_KEY, JSON.stringify(normalizedProfile));
-      await register(
-        normalizedProfile.email,
-        password,
-        normalizedProfile.firstName,
-        normalizedProfile.lastName,
-        normalizedProfile.middleName,
-        normalizedProfile.birthDate,
+      const payload = buildRegistrationPayload();
+      await register(payload);
+      localStorage.setItem(
+        REGISTRATION_PROFILE_KEY,
+        JSON.stringify({
+          email: payload.email,
+          firstName: payload.firstName,
+          lastName: payload.lastName,
+          middleName: payload.middleName,
+          birthDate: payload.birthDate,
+        }),
       );
       navigate('/');
     } catch (e) {

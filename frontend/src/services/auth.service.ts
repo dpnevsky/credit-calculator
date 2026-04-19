@@ -10,6 +10,15 @@ export interface User {
   roles: string[];
 }
 
+export interface RegistrationPayload {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  birthDate?: string;
+}
+
 interface TokenResponse {
   accessToken: string;
   refreshToken: string;
@@ -110,18 +119,11 @@ const AuthService = {
     return extractUser(tokens.accessToken);
   },
 
-  async register(
-    email: string,
-    password: string,
-    firstName: string,
-    lastName: string,
-    middleName?: string,
-    birthDate?: string,
-  ): Promise<User | null> {
+  async register(payload: RegistrationPayload): Promise<User | null> {
     const response = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, firstName, lastName, middleName, birthDate }),
+      body: JSON.stringify(payload),
     });
     const tokens = await parseResponse(response);
     saveTokens(tokens);

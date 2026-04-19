@@ -91,6 +91,7 @@ public class KeycloakAuthService {
 
     private Mono<Void> createUser(String adminToken, AuthDtos.RegisterRequest request) {
         Map<String, Object> payload = new HashMap<>();
+        Map<String, List<String>> attributes = new HashMap<>();
         payload.put("enabled", true);
         payload.put("username", request.email());
         payload.put("email", request.email());
@@ -98,7 +99,14 @@ public class KeycloakAuthService {
         payload.put("firstName", request.firstName());
         payload.put("lastName", request.lastName());
         if (request.middleName() != null && !request.middleName().isBlank()) {
-            payload.put("attributes", Map.of("middleName", List.of(request.middleName())));
+            attributes.put("middleName", List.of(request.middleName()));
+        }
+        if (request.birthDate() != null && !request.birthDate().isBlank()) {
+            attributes.put("birthDate", List.of(request.birthDate()));
+            attributes.put("birthdate", List.of(request.birthDate()));
+        }
+        if (!attributes.isEmpty()) {
+            payload.put("attributes", attributes);
         }
 
         return webClient.post()

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { AuthContext } from './AuthContext';
 import AuthService from '../services/auth.service';
-import type { User } from '../services/auth.service';
+import type { RegistrationPayload, User } from '../services/auth.service';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -27,15 +27,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(currentUser);
   }, []);
 
-  const register = useCallback(async (
-    email: string,
-    password: string,
-    firstName: string,
-    lastName: string,
-    middleName?: string,
-    birthDate?: string,
-  ) => {
-    const currentUser = await AuthService.register(email, password, firstName, lastName, middleName, birthDate);
+  const register = useCallback(async (payload: RegistrationPayload) => {
+    const currentUser = await AuthService.register(payload);
     setUser(currentUser);
   }, []);
 
