@@ -3,7 +3,6 @@
 
 ### 1) Получить список документов по applicationId и сохранить documentId первого документа
 GET {{host}}/internal/documents/application/{{applicationId}}
-X-Debug-Auth: allow
 
 > {%
     client.test("documents list loaded", function () {
@@ -18,7 +17,6 @@ X-Debug-Auth: allow
 
 ### 2) Скачать документ по documentId
 GET {{host}}/internal/documents/{{documentId}}/download
-X-Debug-Auth: allow
 
 > {%
     client.test("download response is ok", function () {

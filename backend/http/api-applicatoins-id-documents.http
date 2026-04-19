@@ -1,3 +1,2 @@
 ### get documents
 GET http://localhost:8081/api/applications/1adfa8a4-9763-4cc7-9a97-0f2331aaac95/documents
-X-Debug-Auth: allow

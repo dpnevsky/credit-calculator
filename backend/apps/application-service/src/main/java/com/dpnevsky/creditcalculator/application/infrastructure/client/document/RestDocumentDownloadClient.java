@@ -5,6 +5,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -12,9 +15,8 @@ import java.util.UUID;
 
 @Component
 public class RestDocumentDownloadClient implements DocumentDownloadClient {
-
-    private static final String DEBUG_AUTH_HEADER = "X-Debug-Auth";
-    private static final String DEBUG_AUTH_VALUE = "allow";
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String BEARER_PREFIX = "Bearer ";
 
     private final RestClient restClient;
 
@@ -29,9 +31,11 @@ public class RestDocumentDownloadClient implements DocumentDownloadClient {
 
     @Override
     public DownloadedDocument downloadByDocumentId(UUID documentId) {
+        String bearerToken = resolveBearerToken();
+
         ResponseEntity<byte[]> response = restClient.get()
                 .uri("/internal/documents/{documentId}/download", documentId)
-                .header(DEBUG_AUTH_HEADER, DEBUG_AUTH_VALUE)
+                .header(AUTHORIZATION_HEADER, BEARER_PREFIX + bearerToken)
                 .retrieve()
                 .toEntity(byte[].class);
 
@@ -67,5 +71,14 @@ public class RestDocumentDownloadClient implements DocumentDownloadClient {
         }
 
         return fileName;
+    }
+
+    private String resolveBearerToken() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof JwtAuthenticationToken jwtAuthenticationToken) {
+            return jwtAuthenticationToken.getToken().getTokenValue();
+        }
+
+        throw new IllegalStateException("Missing authenticated bearer token for document download");
     }
 }

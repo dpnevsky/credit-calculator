@@ -9,7 +9,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -30,21 +29,12 @@ public class DocumentQueryController {
     }
 
     @GetMapping("/internal/documents/application/{applicationId}")
-    public List<GetGeneratedDocumentResponse> getDocumentsByApplicationId(
-            @RequestHeader(value = "X-Debug-Auth", required = false) String debugAuthHeader,
-            @PathVariable UUID applicationId
-    ) {
-        validateDebugAuth(debugAuthHeader);
+    public List<GetGeneratedDocumentResponse> getDocumentsByApplicationId(@PathVariable UUID applicationId) {
         return getGeneratedDocumentsService.getByApplicationId(applicationId);
     }
 
     @GetMapping("/internal/documents/{documentId}/download")
-    public ResponseEntity<byte[]> downloadDocumentById(
-            @RequestHeader(value = "X-Debug-Auth", required = false) String debugAuthHeader,
-            @PathVariable UUID documentId
-    ) {
-        validateDebugAuth(debugAuthHeader);
-
+    public ResponseEntity<byte[]> downloadDocumentById(@PathVariable UUID documentId) {
         GetGeneratedDocumentContentService.GeneratedDocumentContent document =
                 getGeneratedDocumentContentService.getByDocumentId(documentId);
 
@@ -63,11 +53,5 @@ public class DocumentQueryController {
                                 .toString()
                 )
                 .body(document.content());
-    }
-
-    private void validateDebugAuth(String debugAuthHeader) {
-        if (!"allow".equals(debugAuthHeader)) {
-            throw new IllegalStateException("Missing or invalid X-Debug-Auth header");
-        }
     }
 }

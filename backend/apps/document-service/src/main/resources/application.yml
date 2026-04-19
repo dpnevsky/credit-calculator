@@ -1,6 +1,12 @@
 spring:
   application:
     name: document-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/credit-calculator
+          jwk-set-uri: http://localhost:8180/realms/credit-calculator/protocol/openid-connect/certs
 
   datasource:
     url: jdbc:postgresql://localhost:5435/document_db

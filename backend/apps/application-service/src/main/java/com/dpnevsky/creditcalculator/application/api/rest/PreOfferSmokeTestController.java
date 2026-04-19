@@ -6,7 +6,6 @@ import com.dpnevsky.creditcalculator.application.api.rest.mapper.PreliminaryOffe
 import com.dpnevsky.creditcalculator.application.application.service.CreatePreliminaryOffersService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -27,14 +26,7 @@ public class PreOfferSmokeTestController {
     }
 
     @PostMapping("/internal/test/offers/generate")
-    public List<PreliminaryOfferResponse> generateOffers(
-            @RequestHeader(value = "X-Debug-Auth", required = false) String debugAuthHeader,
-            @Valid @RequestBody GeneratePreliminaryOffersRequest request
-    ) {
-        if (!"allow".equals(debugAuthHeader)) {
-            throw new IllegalStateException("Missing or invalid X-Debug-Auth header");
-        }
-
+    public List<PreliminaryOfferResponse> generateOffers(@Valid @RequestBody GeneratePreliminaryOffersRequest request) {
         return preliminaryOfferResponseMapper.toResponseList(
                 createPreliminaryOffersService.create(
                         request.applicationId(),

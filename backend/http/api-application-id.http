@@ -1,11 +1,9 @@
 ### get
 GET http://localhost:8081/api/applications/2dba5075-93c7-4b73-a9e3-73ed966f6496
-X-Debug-Auth: allow
 
 ### path
 PATCH http://localhost:8081/api/applications/2dba5075-93c7-4b73-a9e3-73ed966f6496
 Content-Type: application/json
-X-Debug-Auth: allow
 
 {
   "amount": 550000.00,
