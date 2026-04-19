@@ -372,6 +372,10 @@
   font-size: 0.9rem;
 }
 
+.offer-warning-text {
+  margin-bottom: 12px;
+}
+
 .contract-preview {
   display: flex;
   flex-direction: column;
@@ -560,6 +564,19 @@
   color: #6b7280;
   font-size: 0.9rem;
   margin-bottom: 24px;
+}
+
+.scoring-result-card {
+  border-left: 8px solid transparent;
+}
+
+.scoring-result-status {
+  font-weight: 700;
+}
+
+.offer-preview-card {
+  margin-top: 16px;
+  margin-bottom: 0;
 }
 
 /* ===== CTA ===== */

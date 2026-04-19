@@ -1,5 +1,8 @@
 const SIGNED_APPLICATIONS_STORAGE_KEY = 'cc_signed_applications';
 
+// TODO: This is a temporary frontend-only stub that simulates SIGNED state
+// until the backend exposes contract-signing truth explicitly.
+// Replace this local override with backend-driven status once the flow is implemented.
 const rejectionReasonLabels: Record<string, string> = {
   AGE_OUT_OF_RANGE: 'Возраст не соответствует требованиям банка.',
   UNEMPLOYED: 'Отсутствует подтверждённая занятость.',
@@ -23,7 +26,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 
 type SignedApplicationsMap = Record<string, string>;
 
-const readSignedApplications = (): SignedApplicationsMap => {
+const readSignedApplicationsStub = (): SignedApplicationsMap => {
   if (typeof window === 'undefined') {
     return {};
   }
@@ -41,7 +44,7 @@ const readSignedApplications = (): SignedApplicationsMap => {
   }
 };
 
-const writeSignedApplications = (value: SignedApplicationsMap) => {
+const writeSignedApplicationsStub = (value: SignedApplicationsMap) => {
   if (typeof window === 'undefined') {
     return;
   }
@@ -64,13 +67,13 @@ export const isApplicationSigned = (applicationId?: string) => {
     return false;
   }
 
-  return Boolean(readSignedApplications()[applicationId]);
+  return Boolean(readSignedApplicationsStub()[applicationId]);
 };
 
 export const markApplicationAsSigned = (applicationId: string) => {
-  const signedApplications = readSignedApplications();
+  const signedApplications = readSignedApplicationsStub();
   signedApplications[applicationId] = new Date().toISOString();
-  writeSignedApplications(signedApplications);
+  writeSignedApplicationsStub(signedApplications);
 };
 
 export const getEffectiveApplicationStatus = (status: string, applicationId?: string) => {

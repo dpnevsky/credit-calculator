@@ -88,8 +88,11 @@ public class ApplicationController {
     }
 
     @GetMapping("/api/applications/{applicationId}")
-    public GetApplicationResponse getApplication(@PathVariable UUID applicationId) {
-        return getApplicationService.getById(applicationId);
+    public GetApplicationResponse getApplication(
+            @PathVariable UUID applicationId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return getApplicationService.getById(applicationId, extractUserEmail(jwt));
     }
 
     @GetMapping("/api/applications")
@@ -119,29 +122,64 @@ public class ApplicationController {
 
     @GetMapping("/api/applications/{applicationId}/scoring-result")
     public GetApplicationScoringResultResponse getApplicationScoringResult(
-            @PathVariable UUID applicationId
+            @PathVariable UUID applicationId,
+            @AuthenticationPrincipal Jwt jwt
     ) {
-        return getApplicationScoringResultService.getLatestByApplicationId(applicationId);
+        return getApplicationScoringResultService.getLatestByApplicationId(applicationId, extractUserEmail(jwt));
     }
 
     @PostMapping("/api/applications/{applicationId}/request-documents")
     public RequestDocumentsResponse requestDocuments(
             @PathVariable UUID applicationId,
+            @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody(required = false) RequestDocumentsRequest request
     ) {
-        return requestDocumentsService.requestDocuments(applicationId, request == null ? null : request.paymentType());
+        return requestDocumentsService.requestDocuments(
+                applicationId,
+                extractUserEmail(jwt),
+                request == null ? null : request.paymentType()
+        );
     }
 
     @GetMapping("/api/applications/{applicationId}/documents")
-    public List<GetApplicationDocumentResponse> getApplicationDocuments(@PathVariable UUID applicationId) {
-        return getApplicationDocumentsService.getByApplicationId(applicationId);
+    public List<GetApplicationDocumentResponse> getApplicationDocuments(
+            @PathVariable UUID applicationId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return getApplicationDocumentsService.getByApplicationId(applicationId, extractUserEmail(jwt));
     }
 
     @GetMapping("/api/documents/{documentId}/download")
-    public ResponseEntity<byte[]> downloadDocument(@PathVariable UUID documentId) {
+    public ResponseEntity<byte[]> downloadDocument(
+            @PathVariable UUID documentId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
         DownloadApplicationDocumentService.DownloadedApplicationDocument document =
-                downloadApplicationDocumentService.downloadByDocumentId(documentId);
+                downloadApplicationDocumentService.downloadByDocumentId(documentId, extractUserEmail(jwt));
 
+        return toDocumentDownloadResponse(document);
+    }
+
+    @GetMapping("/api/applications/{applicationId}/offers")
+    public List<GetOfferResponse> getOffers(
+            @PathVariable UUID applicationId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return getOffersService.getByApplicationId(applicationId, extractUserEmail(jwt));
+    }
+
+    @PostMapping("/api/applications/{applicationId}/offers/{offerId}/select")
+    public SelectOfferResponse selectOffer(
+            @PathVariable UUID applicationId,
+            @PathVariable UUID offerId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return selectOfferService.selectOffer(applicationId, extractUserEmail(jwt), offerId);
+    }
+
+    private ResponseEntity<byte[]> toDocumentDownloadResponse(
+            DownloadApplicationDocumentService.DownloadedApplicationDocument document
+    ) {
         MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
         if (document.mimeType() != null && !document.mimeType().isBlank()) {
             mediaType = MediaType.parseMediaType(document.mimeType());
@@ -159,16 +197,11 @@ public class ApplicationController {
                 .body(document.content());
     }
 
-    @GetMapping("/api/applications/{applicationId}/offers")
-    public List<GetOfferResponse> getOffers(@PathVariable UUID applicationId) {
-        return getOffersService.getByApplicationId(applicationId);
-    }
-
-    @PostMapping("/api/applications/{applicationId}/offers/{offerId}/select")
-    public SelectOfferResponse selectOffer(
-            @PathVariable UUID applicationId,
-            @PathVariable UUID offerId
-    ) {
-        return selectOfferService.selectOffer(applicationId, offerId);
+    private String extractUserEmail(Jwt jwt) {
+        String userEmail = jwt != null ? jwt.getClaimAsString("email") : null;
+        if (userEmail == null || userEmail.isBlank()) {
+            throw new IllegalStateException("Missing user email");
+        }
+        return userEmail;
     }
 }

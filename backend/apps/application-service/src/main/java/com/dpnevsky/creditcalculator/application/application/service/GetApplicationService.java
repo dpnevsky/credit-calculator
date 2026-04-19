@@ -1,10 +1,8 @@
 package com.dpnevsky.creditcalculator.application.application.service;
 
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationResponse;
-import com.dpnevsky.creditcalculator.application.application.exception.ApplicationNotFoundException;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationSubmitDataEntity;
-import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationRepository;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationSubmitDataRepository;
 import org.springframework.stereotype.Service;
 
@@ -13,20 +11,19 @@ import java.util.UUID;
 @Service
 public class GetApplicationService {
 
-    private final ApplicationRepository applicationRepository;
+    private final ApplicationAccessService applicationAccessService;
     private final ApplicationSubmitDataRepository applicationSubmitDataRepository;
 
     public GetApplicationService(
-            ApplicationRepository applicationRepository,
+            ApplicationAccessService applicationAccessService,
             ApplicationSubmitDataRepository applicationSubmitDataRepository
     ) {
-        this.applicationRepository = applicationRepository;
+        this.applicationAccessService = applicationAccessService;
         this.applicationSubmitDataRepository = applicationSubmitDataRepository;
     }
 
-    public GetApplicationResponse getById(UUID applicationId) {
-        ApplicationEntity applicationEntity = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new ApplicationNotFoundException(applicationId));
+    public GetApplicationResponse getById(UUID applicationId, String userEmail) {
+        ApplicationEntity applicationEntity = applicationAccessService.getOwnedApplication(applicationId, userEmail);
         GetApplicationResponse.SubmitData submitData = applicationSubmitDataRepository.findById(applicationId)
                 .map(this::toSubmitData)
                 .orElse(null);

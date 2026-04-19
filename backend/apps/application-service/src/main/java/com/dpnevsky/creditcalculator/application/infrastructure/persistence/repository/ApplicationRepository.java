@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface ApplicationRepository extends JpaRepository<ApplicationEntity, UUID> {
     List<ApplicationEntity> findAllByEmailOrderByCreatedAtDesc(String email);
+
+    java.util.Optional<ApplicationEntity> findByIdAndEmail(UUID id, String email);
 }

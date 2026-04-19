@@ -1,7 +1,6 @@
 package com.dpnevsky.creditcalculator.application.application.service;
 
 import com.dpnevsky.creditcalculator.application.api.rest.dto.RequestDocumentsResponse;
-import com.dpnevsky.creditcalculator.application.application.exception.ApplicationNotFoundException;
 import com.dpnevsky.creditcalculator.application.application.port.out.DocumentCommandPublisher;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationRepository;
@@ -20,24 +19,45 @@ public class RequestDocumentsService {
     private static final String DOCUMENTS_READY_STATUS = "DOCUMENTS_READY";
     private static final String DEFAULT_PAYMENT_TYPE = "ANNUITY";
 
+    private final ApplicationAccessService applicationAccessService;
     private final ApplicationRepository applicationRepository;
     private final DocumentCommandPublisher documentCommandPublisher;
 
     public RequestDocumentsService(
+            ApplicationAccessService applicationAccessService,
             ApplicationRepository applicationRepository,
             DocumentCommandPublisher documentCommandPublisher
     ) {
+        this.applicationAccessService = applicationAccessService;
         this.applicationRepository = applicationRepository;
         this.documentCommandPublisher = documentCommandPublisher;
     }
 
     @Transactional
-    public RequestDocumentsResponse requestDocuments(UUID applicationId, String paymentType) {
-        ApplicationEntity existingApplication = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new ApplicationNotFoundException(applicationId));
+    public RequestDocumentsResponse requestDocuments(UUID applicationId, String userEmail, String paymentType) {
+        ApplicationEntity existingApplication = applicationAccessService.getOwnedApplication(applicationId, userEmail);
+        ensureDocumentsRequestAllowed(existingApplication.getStatus());
 
-        String currentStatus = existingApplication.getStatus();
+        OffsetDateTime now = OffsetDateTime.now();
+        String resolvedPaymentType = resolvePaymentType(existingApplication, paymentType);
+        String nextStatus = resolveNextStatus(existingApplication.getStatus());
 
+        applicationRepository.save(buildRequestedDocumentsApplication(
+                existingApplication,
+                resolvedPaymentType,
+                nextStatus,
+                now
+        ));
+        documentCommandPublisher.publishDocumentGenerationRequested(applicationId);
+
+        return new RequestDocumentsResponse(
+                applicationId,
+                nextStatus,
+                "Document generation has been requested"
+        );
+    }
+
+    private void ensureDocumentsRequestAllowed(String currentStatus) {
         if (!SCORING_COMPLETED_STATUS.equals(currentStatus)
                 && !OFFER_SELECTED_STATUS.equals(currentStatus)
                 && !DOCUMENTS_REQUESTED_STATUS.equals(currentStatus)
@@ -46,13 +66,17 @@ public class RequestDocumentsService {
                     "Documents can be requested only for applications with status SCORING_COMPLETED, OFFER_SELECTED, DOCUMENTS_REQUESTED or DOCUMENTS_READY"
             );
         }
+    }
 
-        OffsetDateTime now = OffsetDateTime.now();
-        String resolvedPaymentType = resolvePaymentType(existingApplication, paymentType);
-
-        ApplicationEntity updatedApplication = new ApplicationEntity(
+    private ApplicationEntity buildRequestedDocumentsApplication(
+            ApplicationEntity existingApplication,
+            String resolvedPaymentType,
+            String nextStatus,
+            OffsetDateTime updatedAt
+    ) {
+        return new ApplicationEntity(
                 existingApplication.getId(),
-                DOCUMENTS_REQUESTED_STATUS,
+                nextStatus,
                 existingApplication.getAmount(),
                 existingApplication.getTermMonths(),
                 existingApplication.getFirstName(),
@@ -63,19 +87,15 @@ public class RequestDocumentsService {
                 existingApplication.getPassportSeries(),
                 existingApplication.getPassportNumber(),
                 existingApplication.getCreatedAt(),
-                now,
+                updatedAt,
                 resolvedPaymentType
         );
+    }
 
-        applicationRepository.save(updatedApplication);
-
-        documentCommandPublisher.publishDocumentGenerationRequested(applicationId);
-
-        return new RequestDocumentsResponse(
-                applicationId,
-                DOCUMENTS_REQUESTED_STATUS,
-                "Document generation has been requested"
-        );
+    private String resolveNextStatus(String currentStatus) {
+        return DOCUMENTS_READY_STATUS.equals(currentStatus)
+                ? DOCUMENTS_READY_STATUS
+                : DOCUMENTS_REQUESTED_STATUS;
     }
 
     private String resolvePaymentType(ApplicationEntity application, String requestedPaymentType) {

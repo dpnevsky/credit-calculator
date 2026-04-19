@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import ApiService from '../services/api.service';
 import type {
   ApplicationResponse,
-  ApplicationSubmitData,
   DocumentResponse,
   OfferResponse,
   PaymentType,
@@ -15,26 +14,47 @@ import {
   getApplicationStatusLabel,
   isRejectedApplicationStatus,
 } from '../utils/applicationStatus';
+import {
+  ACCOUNT_NUMBER_LENGTH,
+  buildPaymentSchedule,
+  downloadBlobAsFile,
+  formatBoolean,
+  formatDate,
+  formatMoney,
+  getContractDocument,
+  getEmploymentStatusLabel,
+  getGenderLabel,
+  getInsuranceAmount,
+  getMaritalStatusLabel,
+  getPaymentTypeLabel,
+  getPositionLabel,
+  loadApplicationDetailsData,
+  normalizeSalaryAccountNumber,
+  refreshDocumentsAfterRequest,
+} from './applicationDetails.helpers';
 import './Application.css';
 
-type PaymentRow = {
-  month: number;
-  payment: number;
-  principal: number;
-  interest: number;
-  balance: number;
+const PAYMENT_TYPE_STORAGE_KEY = 'cc_payment_type_';
+const SALARY_ACCOUNT_STORAGE_KEY = 'cc_salary_account_';
+
+type ApplicationDetailsState = {
+  application: ApplicationResponse | null;
+  scoringResult: ScoringResultResponse | null;
+  offers: OfferResponse[];
+  documents: DocumentResponse[];
 };
 
-const ACCOUNT_NUMBER_LENGTH = 20;
+const INITIAL_STATE: ApplicationDetailsState = {
+  application: null,
+  scoringResult: null,
+  offers: [],
+  documents: [],
+};
 
 const ApplicationDetails: React.FC = () => {
   const { applicationId } = useParams<{ applicationId: string }>();
   const navigate = useNavigate();
-
-  const [application, setApplication] = useState<ApplicationResponse | null>(null);
-  const [scoringResult, setScoringResult] = useState<ScoringResultResponse | null>(null);
-  const [offers, setOffers] = useState<OfferResponse[]>([]);
-  const [documents, setDocuments] = useState<DocumentResponse[]>([]);
+  const [state, setState] = useState<ApplicationDetailsState>(INITIAL_STATE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -43,44 +63,19 @@ const ApplicationDetails: React.FC = () => {
   const [isPaymentTypeHydrated, setIsPaymentTypeHydrated] = useState(false);
   const [salaryAccountNumber, setSalaryAccountNumber] = useState('');
 
+  const { application, scoringResult, offers, documents } = state;
+
   const loadData = useCallback(async () => {
     if (!applicationId) {
       return;
     }
 
+    setError(null);
+
     try {
-      const app = await ApiService.getApplication(applicationId);
-      setApplication(app);
-
-      try {
-        const scoring = await ApiService.getScoringResult(applicationId);
-        setScoringResult(scoring);
-      } catch {
-        setScoringResult(null);
-      }
-
-      try {
-        const offersData = await ApiService.getOffers(applicationId);
-        setOffers(offersData);
-      } catch {
-        setOffers([]);
-      }
-
-      try {
-        let docs = await ApiService.getDocuments(applicationId);
-        if (app.status === 'OFFER_SELECTED' && docs.length === 0) {
-          try {
-            await ApiService.requestDocuments(applicationId);
-            docs = await ApiService.getDocuments(applicationId);
-          } catch {
-            // Documents can be generated asynchronously.
-          }
-        }
-        setDocuments(docs);
-      } catch {
-        setDocuments([]);
-      }
-    } catch (loadError: unknown) {
+      const data = await loadApplicationDetailsData(applicationId);
+      setState(data);
+    } catch (loadError) {
       if (loadError instanceof Error) {
         setError(loadError.message);
       } else {
@@ -100,7 +95,7 @@ const ApplicationDetails: React.FC = () => {
       return;
     }
 
-    const paymentTypeRaw = localStorage.getItem(`cc_payment_type_${applicationId}`);
+    const paymentTypeRaw = localStorage.getItem(`${PAYMENT_TYPE_STORAGE_KEY}${applicationId}`);
     if (paymentTypeRaw === 'DIFFERENTIAL' || paymentTypeRaw === 'ANNUITY') {
       setPaymentType(paymentTypeRaw);
     } else {
@@ -115,14 +110,14 @@ const ApplicationDetails: React.FC = () => {
       return;
     }
 
-    const accountRaw = localStorage.getItem(`cc_salary_account_${applicationId}`);
+    const accountRaw = localStorage.getItem(`${SALARY_ACCOUNT_STORAGE_KEY}${applicationId}`);
     if (accountRaw !== null) {
-      setSalaryAccountNumber(accountRaw.replace(/\D/g, '').slice(0, ACCOUNT_NUMBER_LENGTH));
+      setSalaryAccountNumber(normalizeSalaryAccountNumber(accountRaw));
       return;
     }
 
     const backendAccount = application.submitData?.accountNumber ?? '';
-    setSalaryAccountNumber(backendAccount.replace(/\D/g, '').slice(0, ACCOUNT_NUMBER_LENGTH));
+    setSalaryAccountNumber(normalizeSalaryAccountNumber(backendAccount));
   }, [applicationId, application]);
 
   useEffect(() => {
@@ -130,7 +125,7 @@ const ApplicationDetails: React.FC = () => {
       return;
     }
 
-    localStorage.setItem(`cc_payment_type_${applicationId}`, paymentType);
+    localStorage.setItem(`${PAYMENT_TYPE_STORAGE_KEY}${applicationId}`, paymentType);
   }, [applicationId, isPaymentTypeHydrated, paymentType]);
 
   useEffect(() => {
@@ -138,7 +133,7 @@ const ApplicationDetails: React.FC = () => {
       return;
     }
 
-    localStorage.setItem(`cc_salary_account_${applicationId}`, salaryAccountNumber);
+    localStorage.setItem(`${SALARY_ACCOUNT_STORAGE_KEY}${applicationId}`, salaryAccountNumber);
   }, [applicationId, salaryAccountNumber]);
 
   useEffect(() => {
@@ -154,164 +149,17 @@ const ApplicationDetails: React.FC = () => {
     }
   }, [offers, previewOfferId]);
 
-  const normalizedSalaryAccountNumber = salaryAccountNumber.replace(/\D/g, '').slice(0, ACCOUNT_NUMBER_LENGTH);
+  const normalizedSalaryAccountNumber = normalizeSalaryAccountNumber(salaryAccountNumber);
   const isSalaryAccountNumberValid = normalizedSalaryAccountNumber.length === ACCOUNT_NUMBER_LENGTH;
-
-  const formatMoney = (value: number) =>
-    new Intl.NumberFormat('ru-RU', {
-      style: 'currency',
-      currency: 'RUB',
-      maximumFractionDigits: 0,
-    }).format(value);
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
-
-  const getGenderLabel = (value?: ApplicationSubmitData['gender']) => {
-    switch (value) {
-      case 'MALE':
-        return 'Мужской';
-      case 'FEMALE':
-        return 'Женский';
-      case 'NON_BINARY':
-        return 'Другой';
-      default:
-        return 'Не указано';
-    }
-  };
-
-  const getMaritalStatusLabel = (value?: ApplicationSubmitData['maritalStatus']) => {
-    switch (value) {
-      case 'SINGLE':
-        return 'Не в браке';
-      case 'MARRIED':
-        return 'В браке';
-      case 'DIVORCED':
-        return 'Разведён(а)';
-      case 'WIDOWED':
-        return 'Вдовец/Вдова';
-      default:
-        return 'Не указано';
-    }
-  };
-
-  const getEmploymentStatusLabel = (value?: ApplicationSubmitData['employmentStatus']) => {
-    switch (value) {
-      case 'EMPLOYED':
-        return 'Работаю';
-      case 'UNEMPLOYED':
-        return 'Не работаю';
-      case 'SELF_EMPLOYED':
-        return 'Самозанятый';
-      case 'RETIRED':
-        return 'Пенсионер';
-      case 'BUSINESS_OWNER':
-        return 'Владелец бизнеса';
-      case 'STUDENT':
-        return 'Студент';
-      default:
-        return 'Не указано';
-    }
-  };
-
-  const getPositionLabel = (value?: ApplicationSubmitData['position']) => {
-    switch (value) {
-      case 'TOP_MANAGER':
-        return 'Топ-менеджер';
-      case 'MID_MANAGER':
-        return 'Менеджер';
-      case 'JUNIOR_MANAGER':
-        return 'Младший менеджер';
-      case 'DEVELOPER':
-        return 'Разработчик';
-      case 'SALES':
-        return 'Продажи';
-      case 'ACCOUNTANT':
-        return 'Бухгалтер';
-      case 'HR':
-        return 'HR';
-      case 'OTHER':
-        return 'Другое';
-      default:
-        return 'Не указано';
-    }
-  };
-
-  const formatBoolean = (value?: boolean) => {
-    if (value === undefined) {
-      return 'Не указано';
-    }
-    return value ? 'Да' : 'Нет';
-  };
-
-  const getPaymentTypeLabel = (type: PaymentType) =>
-    type === 'ANNUITY' ? 'Аннуитетный' : 'Дифференцированный';
-
-  const getInsuranceAmount = (offer: OfferResponse) =>
-    offer.insuranceEnabled ? Math.max(0, offer.totalAmount - offer.requestedAmount) : 0;
-
-  const buildPaymentSchedule = (offer: OfferResponse, scheduleType: PaymentType): PaymentRow[] => {
-    const rows: PaymentRow[] = [];
-    const principal = offer.totalAmount;
-    const months = offer.termMonths;
-    const monthlyRate = offer.rate / 12 / 100;
-    let balance = principal;
-
-    if (scheduleType === 'ANNUITY') {
-      const annuityPayment =
-        monthlyRate === 0
-          ? principal / months
-          : principal * (monthlyRate / (1 - (1 + monthlyRate) ** (-months)));
-
-      for (let month = 1; month <= months; month += 1) {
-        const interest = balance * monthlyRate;
-        const principalPart = annuityPayment - interest;
-        balance = Math.max(0, balance - principalPart);
-        rows.push({
-          month,
-          payment: annuityPayment,
-          principal: principalPart,
-          interest,
-          balance,
-        });
-      }
-
-      return rows;
-    }
-
-    const principalPart = principal / months;
-    for (let month = 1; month <= months; month += 1) {
-      const interest = balance * monthlyRate;
-      const payment = principalPart + interest;
-      balance = Math.max(0, balance - principalPart);
-      rows.push({
-        month,
-        payment,
-        principal: principalPart,
-        interest,
-        balance,
-      });
-    }
-
-    return rows;
-  };
-
-  const getContractDocument = (docs: DocumentResponse[]) =>
-    docs.find((doc) => doc.format === 'PDF' && doc.documentType === 'CREDIT_AGREEMENT') ??
-    docs.find((doc) => doc.format === 'PDF') ??
-    null;
-
   const previewOffer = offers.find((offer) => offer.offerId === previewOfferId) ?? null;
   const selectedOffer = offers.find((offer) => offer.selected) ?? null;
   const previewSchedule = previewOffer ? buildPaymentSchedule(previewOffer, paymentType) : [];
   const contractDocument = getContractDocument(documents);
   const scoringProfile = application?.submitData ?? null;
+  const canRequestDocuments =
+    application?.status === 'OFFER_SELECTED' ||
+    application?.status === 'DOCUMENTS_REQUESTED' ||
+    application?.status === 'DOCUMENTS_READY';
   const isPaymentTypeLocked =
     selectedOffer !== null ||
     application?.status === 'OFFER_SELECTED' ||
@@ -345,17 +193,19 @@ const ApplicationDetails: React.FC = () => {
     }
 
     setActionLoading(true);
+    setError(null);
+
     try {
       await ApiService.selectOffer(applicationId, offerId);
 
       try {
         await ApiService.requestDocuments(applicationId, { paymentType });
       } catch {
-        // Генерация документов может завершиться позже.
+        // Документы могут быть сгенерированы асинхронно позже.
       }
 
       await loadData();
-    } catch (selectError: unknown) {
+    } catch (selectError) {
       if (selectError instanceof Error) {
         setError(selectError.message);
       } else {
@@ -366,34 +216,53 @@ const ApplicationDetails: React.FC = () => {
     }
   };
 
-  const downloadContractPdf = async () => {
+  const handleRequestDocuments = async () => {
+    if (!applicationId) {
+      return;
+    }
+
+    setActionLoading(true);
+    setError(null);
+
+    try {
+      await refreshDocumentsAfterRequest(applicationId, paymentType);
+      await loadData();
+    } catch (requestError) {
+      if (requestError instanceof Error) {
+        setError(requestError.message);
+      } else {
+        setError('Не удалось запросить документы');
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDownloadContractPdf = async () => {
     if (!applicationId || !contractDocument) {
       return;
     }
 
     setActionLoading(true);
+    setError(null);
+
     try {
-      let documentToDownload = contractDocument;
+      let documentToDownload: DocumentResponse = contractDocument;
 
       try {
-        await ApiService.requestDocuments(applicationId, { paymentType });
-        const refreshedDocuments = await ApiService.getDocuments(applicationId);
-        setDocuments(refreshedDocuments);
+        const refreshedDocuments = await refreshDocumentsAfterRequest(applicationId, paymentType);
+        setState((prev) => ({ ...prev, documents: refreshedDocuments }));
         documentToDownload = getContractDocument(refreshedDocuments) ?? documentToDownload;
       } catch {
         // Если регенерация не удалась, скачиваем последнюю доступную версию.
       }
 
       const { blob, fileName } = await ApiService.downloadDocument(documentToDownload.documentId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName || documentToDownload.fileName || `credit-contract-${documentToDownload.documentId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (downloadError: unknown) {
+      downloadBlobAsFile(
+        blob,
+        fileName || documentToDownload.fileName || `credit-contract-${documentToDownload.documentId}.pdf`,
+      );
+    } catch (downloadError) {
       if (downloadError instanceof Error) {
         setError(downloadError.message);
       } else {
@@ -572,22 +441,14 @@ const ApplicationDetails: React.FC = () => {
       </div>
 
       {scoringResult && (
-        <div
-          className="card"
-          style={{
-            borderLeft: `8px solid ${getApplicationStatusColor(application.status, application.applicationId)}`,
-          }}
-        >
+        <div className="card scoring-result-card" style={{ borderLeftColor: getApplicationStatusColor(application.status, application.applicationId) }}>
           <h3>Результат скоринга</h3>
           <div className="info-grid">
             <div className="info-item">
               <span className="info-label">Решение</span>
               <span
-                className="info-value"
-                style={{
-                  color: getApplicationStatusColor(application.status, application.applicationId),
-                  fontWeight: 700,
-                }}
+                className="info-value scoring-result-status"
+                style={{ color: getApplicationStatusColor(application.status, application.applicationId) }}
               >
                 {getApplicationStatusLabel(application.status, application.applicationId)}
               </span>
@@ -648,10 +509,7 @@ const ApplicationDetails: React.FC = () => {
                 type="text"
                 id="salaryAccountNumber"
                 value={salaryAccountNumber}
-                onChange={(event) => {
-                  const sanitizedValue = event.target.value.replace(/\D/g, '').slice(0, ACCOUNT_NUMBER_LENGTH);
-                  setSalaryAccountNumber(sanitizedValue);
-                }}
+                onChange={(event) => setSalaryAccountNumber(normalizeSalaryAccountNumber(event.target.value))}
                 maxLength={ACCOUNT_NUMBER_LENGTH}
                 inputMode="numeric"
                 pattern="\d{20}"
@@ -660,7 +518,7 @@ const ApplicationDetails: React.FC = () => {
             </div>
           </div>
           {!isSalaryAccountNumberValid && normalizedSalaryAccountNumber.length > 0 && (
-            <div className="hint-text" style={{ marginBottom: '12px' }}>
+            <div className="hint-text offer-warning-text">
               Введите ровно 20 цифр банковского счёта.
             </div>
           )}
@@ -704,7 +562,7 @@ const ApplicationDetails: React.FC = () => {
                   {!offer.selected && selectedOffer === null && application.status === 'SCORING_COMPLETED' && (
                     <>
                       {salaryOfferBlocked && (
-                        <div className="hint-text" style={{ marginBottom: '10px' }}>
+                        <div className="hint-text offer-warning-text">
                           Для зарплатного предложения введите 20 цифр банковского счёта.
                         </div>
                       )}
@@ -726,7 +584,7 @@ const ApplicationDetails: React.FC = () => {
           </div>
 
           {previewOffer && (
-            <div className="card" style={{ marginTop: '16px', marginBottom: 0 }}>
+            <div className="card offer-preview-card">
               <h3>График платежей: {getPaymentTypeLabel(paymentType)}</h3>
               <div className="schedule-table-wrapper">
                 <table className="schedule-table">
@@ -771,10 +629,27 @@ const ApplicationDetails: React.FC = () => {
             <button
               type="button"
               className="btn btn-primary"
-              onClick={() => void downloadContractPdf()}
+              onClick={() => void handleDownloadContractPdf()}
               disabled={actionLoading}
             >
               Скачать договор
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!contractDocument && canRequestDocuments && (
+        <div className="card">
+          <h3>Документы</h3>
+          <p className="hint-text">Документы ещё не готовы или требуют повторного запроса.</p>
+          <div className="contract-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void handleRequestDocuments()}
+              disabled={actionLoading}
+            >
+              Запросить документы
             </button>
           </div>
         </div>

@@ -1,9 +1,7 @@
 package com.dpnevsky.creditcalculator.application.application.service;
 
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationScoringResultResponse;
-import com.dpnevsky.creditcalculator.application.application.exception.ApplicationNotFoundException;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ScoringSnapshotEntity;
-import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationRepository;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ScoringSnapshotRepository;
 import org.springframework.stereotype.Service;
 
@@ -13,21 +11,19 @@ import java.util.UUID;
 @Service
 public class GetApplicationScoringResultService {
 
-    private final ApplicationRepository applicationRepository;
+    private final ApplicationAccessService applicationAccessService;
     private final ScoringSnapshotRepository scoringSnapshotRepository;
 
     public GetApplicationScoringResultService(
-            ApplicationRepository applicationRepository,
+            ApplicationAccessService applicationAccessService,
             ScoringSnapshotRepository scoringSnapshotRepository
     ) {
-        this.applicationRepository = applicationRepository;
+        this.applicationAccessService = applicationAccessService;
         this.scoringSnapshotRepository = scoringSnapshotRepository;
     }
 
-    public GetApplicationScoringResultResponse getLatestByApplicationId(UUID applicationId) {
-        if (!applicationRepository.existsById(applicationId)) {
-            throw new ApplicationNotFoundException(applicationId);
-        }
+    public GetApplicationScoringResultResponse getLatestByApplicationId(UUID applicationId, String userEmail) {
+        applicationAccessService.getOwnedApplication(applicationId, userEmail);
 
         ScoringSnapshotEntity scoringSnapshot = scoringSnapshotRepository
                 .findTopByApplicationIdOrderByScoredAtDesc(applicationId)

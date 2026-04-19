@@ -2,7 +2,6 @@ package com.dpnevsky.creditcalculator.application.application.service;
 
 import com.dpnevsky.creditcalculator.application.application.port.out.DocumentDownloadClient;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationDocumentEntity;
-import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationDocumentRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -12,25 +11,22 @@ public class DownloadApplicationDocumentService {
 
     private static final String CONTRACT_FILE_NAME = "credit-agreement-payment-schedule.pdf";
 
-    private final ApplicationDocumentRepository applicationDocumentRepository;
+    private final ApplicationAccessService applicationAccessService;
     private final DocumentDownloadClient documentDownloadClient;
     private final GenerateApplicationContractPdfService generateApplicationContractPdfService;
 
     public DownloadApplicationDocumentService(
-            ApplicationDocumentRepository applicationDocumentRepository,
+            ApplicationAccessService applicationAccessService,
             DocumentDownloadClient documentDownloadClient,
             GenerateApplicationContractPdfService generateApplicationContractPdfService
     ) {
-        this.applicationDocumentRepository = applicationDocumentRepository;
+        this.applicationAccessService = applicationAccessService;
         this.documentDownloadClient = documentDownloadClient;
         this.generateApplicationContractPdfService = generateApplicationContractPdfService;
     }
 
-    public DownloadedApplicationDocument downloadByDocumentId(UUID documentId) {
-        ApplicationDocumentEntity applicationDocument = applicationDocumentRepository.findByDocumentId(documentId)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Application document not found. documentId=" + documentId
-                ));
+    public DownloadedApplicationDocument downloadByDocumentId(UUID documentId, String userEmail) {
+        ApplicationDocumentEntity applicationDocument = applicationAccessService.getOwnedDocument(documentId, userEmail);
 
         if (generateApplicationContractPdfService.supports(
                 applicationDocument.getDocumentType(),

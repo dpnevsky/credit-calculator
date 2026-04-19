@@ -1,8 +1,6 @@
 package com.dpnevsky.creditcalculator.application.application.service;
 
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetOfferResponse;
-import com.dpnevsky.creditcalculator.application.application.exception.ApplicationNotFoundException;
-import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationRepository;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.OfferRepository;
 import org.springframework.stereotype.Service;
 
@@ -12,21 +10,19 @@ import java.util.UUID;
 @Service
 public class GetOffersService {
 
-    private final ApplicationRepository applicationRepository;
+    private final ApplicationAccessService applicationAccessService;
     private final OfferRepository offerRepository;
 
     public GetOffersService(
-            ApplicationRepository applicationRepository,
+            ApplicationAccessService applicationAccessService,
             OfferRepository offerRepository
     ) {
-        this.applicationRepository = applicationRepository;
+        this.applicationAccessService = applicationAccessService;
         this.offerRepository = offerRepository;
     }
 
-    public List<GetOfferResponse> getByApplicationId(UUID applicationId) {
-        if (!applicationRepository.existsById(applicationId)) {
-            throw new ApplicationNotFoundException(applicationId);
-        }
+    public List<GetOfferResponse> getByApplicationId(UUID applicationId, String userEmail) {
+        applicationAccessService.getOwnedApplication(applicationId, userEmail);
 
         return offerRepository.findAllByApplicationIdOrderByRateAsc(applicationId)
                 .stream()
