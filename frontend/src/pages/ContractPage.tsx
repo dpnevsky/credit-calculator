@@ -1,17 +1,26 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import ApiService from '../services/api.service';
-import type { ApplicationResponse, DocumentResponse, OfferResponse } from '../types/api';
 import { isApplicationSigned, markApplicationAsSigned } from '../utils/applicationStatus';
+import type { ContractPageData } from './applicationDetails.helpers';
+import {
+  downloadApplicationDocumentFile,
+  formatMoney,
+  getContractDocument,
+  getPaymentTypeLabel,
+  getSelectedOffer,
+  getStoredPaymentType,
+  loadContractPageData,
+  resolveContractTerms,
+} from './applicationDetails.helpers';
 import './Application.css';
+
+const INITIAL_STATE: ContractPageData | null = null;
 
 const ContractPage: React.FC = () => {
   const { applicationId } = useParams<{ applicationId: string }>();
   const navigate = useNavigate();
 
-  const [application, setApplication] = useState<ApplicationResponse | null>(null);
-  const [documents, setDocuments] = useState<DocumentResponse[]>([]);
-  const [offers, setOffers] = useState<OfferResponse[]>([]);
+  const [state, setState] = useState<ContractPageData | null>(INITIAL_STATE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -33,16 +42,9 @@ const ContractPage: React.FC = () => {
       setError(null);
 
       try {
-        const [applicationData, documentsData, offersData] = await Promise.all([
-          ApiService.getApplication(applicationId),
-          ApiService.getDocuments(applicationId).catch(() => []),
-          ApiService.getOffers(applicationId).catch(() => []),
-        ]);
-
-        setApplication(applicationData);
-        setDocuments(documentsData);
-        setOffers(offersData);
-      } catch (loadError: unknown) {
+        const data = await loadContractPageData(applicationId);
+        setState(data);
+      } catch (loadError) {
         if (loadError instanceof Error) {
           setError(loadError.message);
         } else {
@@ -56,29 +58,17 @@ const ContractPage: React.FC = () => {
     void loadData();
   }, [applicationId]);
 
-  const selectedOffer = useMemo(
-    () => offers.find((offer) => offer.selected) ?? offers[0] ?? null,
-    [offers],
-  );
-
-  const contractDocument = useMemo(
-    () =>
-      documents.find((doc) => doc.format === 'PDF' && doc.documentType === 'CREDIT_AGREEMENT') ??
-      documents.find((doc) => doc.format === 'PDF') ??
-      null,
-    [documents],
-  );
-
-  const paymentType = (applicationId && localStorage.getItem(`cc_payment_type_${applicationId}`)) || 'ANNUITY';
-
-  const formatMoney = (value: number) =>
-    new Intl.NumberFormat('ru-RU', {
-      style: 'currency',
-      currency: 'RUB',
-      maximumFractionDigits: 0,
-    }).format(value);
-
-  const paymentTypeLabel = paymentType === 'DIFFERENTIAL' ? 'Дифференцированный' : 'Аннуитетный';
+  const application = state?.application ?? null;
+  const documents = state?.documents ?? [];
+  const offers = state?.offers ?? [];
+  const selectedOffer = useMemo(() => getSelectedOffer(offers), [offers]);
+  const contractDocument = useMemo(() => getContractDocument(documents), [documents]);
+  const paymentType = application
+    ? getStoredPaymentType(applicationId, application.paymentType)
+    : 'ANNUITY';
+  const contractTerms = application
+    ? resolveContractTerms(application, selectedOffer)
+    : null;
 
   const handleDownloadContract = async () => {
     if (!contractDocument) {
@@ -86,17 +76,11 @@ const ContractPage: React.FC = () => {
     }
 
     setActionLoading(true);
+    setError(null);
+
     try {
-      const { blob, fileName } = await ApiService.downloadDocument(contractDocument.documentId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName || contractDocument.fileName || `credit-contract-${contractDocument.documentId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (downloadError: unknown) {
+      await downloadApplicationDocumentFile(contractDocument);
+    } catch (downloadError) {
       if (downloadError instanceof Error) {
         setError(downloadError.message);
       } else {
@@ -112,6 +96,8 @@ const ContractPage: React.FC = () => {
       return;
     }
 
+    // TODO: This is a temporary frontend-only contract signing stub.
+    // Replace it with backend-driven signing truth once the real signing flow exists.
     markApplicationAsSigned(applicationId);
     setIsSigned(true);
   };
@@ -127,7 +113,7 @@ const ContractPage: React.FC = () => {
     );
   }
 
-  if (error || !application) {
+  if (error || !application || !contractTerms) {
     return (
       <div className="page-container">
         <div className="card error-card">
@@ -146,14 +132,23 @@ const ContractPage: React.FC = () => {
       <div className="detail-header">
         <div>
           <h2>Договор по заявке #{application.applicationId.slice(0, 8)}</h2>
-          <p className="hint-text">Подписание пока работает как интерфейсный шаг без реальной отправки в бэкенд.</p>
+          <p className="hint-text">
+            Подписание пока работает как временный интерфейсный шаг без реальной отправки в backend.
+          </p>
         </div>
         <div className="header-actions">
-          <button className="btn btn-secondary" onClick={() => navigate(`/applications/${application.applicationId}`)}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => navigate(`/applications/${application.applicationId}`)}
+          >
             Назад к заявке
           </button>
           {contractDocument && (
-            <button className="btn btn-primary" onClick={() => void handleDownloadContract()} disabled={actionLoading}>
+            <button
+              className="btn btn-primary"
+              onClick={() => void handleDownloadContract()}
+              disabled={actionLoading}
+            >
               Скачать договор
             </button>
           )}
@@ -164,26 +159,28 @@ const ContractPage: React.FC = () => {
         <h3>Основные условия</h3>
         <div className="info-grid">
           <div className="info-item">
-            <span className="info-label">Заёмщик</span>
+            <span className="info-label">Заемщик</span>
             <span className="info-value">
               {application.lastName} {application.firstName} {application.middleName || ''}
             </span>
           </div>
           <div className="info-item">
             <span className="info-label">Сумма кредита</span>
-            <span className="info-value">{formatMoney(selectedOffer?.totalAmount ?? application.amount)}</span>
+            <span className="info-value">{formatMoney(contractTerms.amount)}</span>
           </div>
           <div className="info-item">
             <span className="info-label">Срок</span>
-            <span className="info-value">{selectedOffer?.termMonths ?? application.termMonths} мес.</span>
+            <span className="info-value">{contractTerms.termMonths} мес.</span>
           </div>
           <div className="info-item">
             <span className="info-label">Ставка</span>
-            <span className="info-value">{selectedOffer ? `${selectedOffer.rate}%` : '—'}</span>
+            <span className="info-value">
+              {contractTerms.rate !== null ? `${contractTerms.rate}%` : 'Не указано'}
+            </span>
           </div>
           <div className="info-item">
             <span className="info-label">Тип платежа</span>
-            <span className="info-value">{paymentTypeLabel}</span>
+            <span className="info-value">{getPaymentTypeLabel(paymentType)}</span>
           </div>
           <div className="info-item">
             <span className="info-label">Статус договора</span>
@@ -198,14 +195,24 @@ const ContractPage: React.FC = () => {
         <h3>Текст договора</h3>
         <div className="contract-preview">
           <p>
-            Настоящий договор подтверждает согласие клиента на оформление кредита по выбранным условиям
-            и графику платежей, сформированному банком.
+            Настоящий договор подтверждает согласие клиента на оформление кредита по выбранным
+            условиям и графику платежей, сформированным банком.
           </p>
           <p>
-            После нажатия на кнопку подписи интерфейс пометит договор как подписанный. Реальная интеграция
-            электронной подписи пока не подключена.
+            После нажатия на кнопку подписи интерфейс пометит договор как подписанный. Реальная
+            интеграция электронной подписи пока не подключена.
           </p>
           <p>Полную версию договора можно скачать в формате PDF.</p>
+          {!selectedOffer && (
+            <p className="hint-text">
+              Детали договора показаны по данным заявки. Выбранный оффер для этой заявки не найден.
+            </p>
+          )}
+          {!contractDocument && (
+            <p className="hint-text">
+              PDF-версия договора пока недоступна. Вернитесь к заявке и запросите документы.
+            </p>
+          )}
         </div>
         <div className="contract-actions">
           <button className="btn btn-primary" onClick={handleSignContract} disabled={isSigned}>

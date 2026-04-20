@@ -17,7 +17,7 @@ import {
 import {
   ACCOUNT_NUMBER_LENGTH,
   buildPaymentSchedule,
-  downloadBlobAsFile,
+  downloadApplicationDocumentFile,
   formatBoolean,
   formatDate,
   formatMoney,
@@ -257,11 +257,7 @@ const ApplicationDetails: React.FC = () => {
         // Если регенерация не удалась, скачиваем последнюю доступную версию.
       }
 
-      const { blob, fileName } = await ApiService.downloadDocument(documentToDownload.documentId);
-      downloadBlobAsFile(
-        blob,
-        fileName || documentToDownload.fileName || `credit-contract-${documentToDownload.documentId}.pdf`,
-      );
+      await downloadApplicationDocumentFile(documentToDownload);
     } catch (downloadError) {
       if (downloadError instanceof Error) {
         setError(downloadError.message);

@@ -23,7 +23,20 @@ export type ApplicationDetailsData = {
   documents: DocumentResponse[];
 };
 
+export type ContractPageData = {
+  application: ApplicationResponse;
+  offers: OfferResponse[];
+  documents: DocumentResponse[];
+};
+
+export type ContractTerms = {
+  amount: number;
+  termMonths: number;
+  rate: number | null;
+};
+
 export const ACCOUNT_NUMBER_LENGTH = 20;
+const PAYMENT_TYPE_STORAGE_KEY = 'cc_payment_type_';
 
 export const formatMoney = (value: number): string =>
   new Intl.NumberFormat('ru-RU', {
@@ -65,9 +78,9 @@ export const getMaritalStatusLabel = (value?: ApplicationSubmitData['maritalStat
     case 'MARRIED':
       return 'В браке';
     case 'DIVORCED':
-      return 'Разведён(а)';
+      return 'Разведен(а)';
     case 'WIDOWED':
-      return 'Вдовец/Вдова';
+      return 'Вдовец/вдова';
     default:
       return 'Не указано';
   }
@@ -179,9 +192,33 @@ export const buildPaymentSchedule = (
 };
 
 export const getContractDocument = (documents: DocumentResponse[]): DocumentResponse | null =>
-  documents.find((doc) => doc.format === 'PDF' && doc.documentType === 'CREDIT_AGREEMENT') ??
-  documents.find((doc) => doc.format === 'PDF') ??
+  documents.find((document) => document.format === 'PDF' && document.documentType === 'CREDIT_AGREEMENT') ??
+  documents.find((document) => document.format === 'PDF') ??
   null;
+
+export const getSelectedOffer = (offers: OfferResponse[]): OfferResponse | null =>
+  offers.find((offer) => offer.selected) ?? null;
+
+export const resolveContractTerms = (
+  application: ApplicationResponse,
+  selectedOffer: OfferResponse | null,
+): ContractTerms => ({
+  amount: selectedOffer?.totalAmount ?? application.amount,
+  termMonths: selectedOffer?.termMonths ?? application.termMonths,
+  rate: selectedOffer?.rate ?? null,
+});
+
+export const getStoredPaymentType = (
+  applicationId: string | undefined,
+  fallback: PaymentType,
+): PaymentType => {
+  if (!applicationId) {
+    return fallback;
+  }
+
+  const rawValue = localStorage.getItem(`${PAYMENT_TYPE_STORAGE_KEY}${applicationId}`);
+  return rawValue === 'DIFFERENTIAL' || rawValue === 'ANNUITY' ? rawValue : fallback;
+};
 
 export const downloadBlobAsFile = (blob: Blob, fileName: string): void => {
   const url = URL.createObjectURL(blob);
@@ -192,6 +229,14 @@ export const downloadBlobAsFile = (blob: Blob, fileName: string): void => {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+};
+
+export const downloadApplicationDocumentFile = async (document: DocumentResponse): Promise<void> => {
+  const { blob, fileName } = await ApiService.downloadDocument(document.documentId);
+  downloadBlobAsFile(
+    blob,
+    fileName || document.fileName || `credit-contract-${document.documentId}.pdf`,
+  );
 };
 
 const loadDocuments = async (applicationId: string): Promise<DocumentResponse[]> => {
@@ -218,6 +263,22 @@ export const loadApplicationDetailsData = async (
     scoringResult,
     offers,
     documents,
+  };
+};
+
+export const loadContractPageData = async (
+  applicationId: string,
+): Promise<ContractPageData> => {
+  const [application, documents, offers] = await Promise.all([
+    ApiService.getApplication(applicationId),
+    loadDocuments(applicationId),
+    ApiService.getOffers(applicationId).catch(() => []),
+  ]);
+
+  return {
+    application,
+    documents,
+    offers,
   };
 };
 

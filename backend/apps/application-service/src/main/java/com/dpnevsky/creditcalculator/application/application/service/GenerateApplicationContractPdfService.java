@@ -32,9 +32,17 @@ public class GenerateApplicationContractPdfService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
     private static final Locale RU_LOCALE = Locale.forLanguageTag("ru-RU");
     private static final String PDF_FONT_FAMILY = "PdfArial";
-    private static final String ARIAL_FONT_PATH = "C:/Windows/Fonts/arial.ttf";
-    private static final String ARIAL_BOLD_FONT_PATH = "C:/Windows/Fonts/arialbd.ttf";
-    private static final String TIMES_FONT_PATH = "C:/Windows/Fonts/times.ttf";
+    private static final List<String> PDF_FONT_CANDIDATE_PATHS = List.of(
+            "C:/Windows/Fonts/arial.ttf",
+            "C:/Windows/Fonts/arialuni.ttf",
+            "C:/Windows/Fonts/segoeui.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+            "/usr/share/fonts/opentype/noto/NotoSans-Regular.ttf",
+            "/Library/Fonts/Arial Unicode.ttf",
+            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf"
+    );
 
     private final ApplicationRepository applicationRepository;
     private final OfferRepository offerRepository;
@@ -56,9 +64,8 @@ public class GenerateApplicationContractPdfService {
                 .orElseThrow(() -> new IllegalStateException("Application not found. applicationId=" + applicationId));
 
         OfferEntity offer = offerRepository.findFirstByApplicationIdAndSelectedTrue(applicationId)
-                .or(() -> offerRepository.findFirstByApplicationIdOrderByRateAsc(applicationId))
                 .orElseThrow(() -> new IllegalStateException(
-                        "Offer not found for contract generation. applicationId=" + applicationId
+                        "Selected offer not found for contract generation. applicationId=" + applicationId
                 ));
 
         String paymentType = normalizePaymentType(application.getPaymentType());
@@ -521,16 +528,14 @@ public class GenerateApplicationContractPdfService {
     }
 
     private void configureFonts(PdfRendererBuilder builder) {
-        registerFont(builder, ARIAL_FONT_PATH);
-        registerFont(builder, ARIAL_BOLD_FONT_PATH);
-        registerFont(builder, TIMES_FONT_PATH);
+        PDF_FONT_CANDIDATE_PATHS.stream()
+                .filter(this::fontExists)
+                .findFirst()
+                .ifPresent(path -> builder.useFont(new File(path), PDF_FONT_FAMILY));
     }
 
-    private void registerFont(PdfRendererBuilder builder, String path) {
-        File fontFile = new File(path);
-        if (fontFile.exists()) {
-            builder.useFont(fontFile, PDF_FONT_FAMILY);
-        }
+    private boolean fontExists(String path) {
+        return new File(path).exists();
     }
 
     private String formatMoney(BigDecimal value) {
