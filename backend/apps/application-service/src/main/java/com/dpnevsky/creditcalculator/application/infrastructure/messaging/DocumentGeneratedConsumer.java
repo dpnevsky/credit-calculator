@@ -48,6 +48,7 @@ public class DocumentGeneratedConsumer {
         DocumentGenerated payload = envelope.payload();
 
         if (applicationDocumentRepository.findByDocumentId(payload.documentId()).isPresent()) {
+            markApplicationDocumentsReady(payload.applicationId());
             log.info(
                     "Skip duplicate DocumentGenerated applicationId={}, documentId={}, requestId={}",
                     payload.applicationId(),

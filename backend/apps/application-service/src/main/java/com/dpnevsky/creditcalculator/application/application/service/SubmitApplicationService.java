@@ -2,7 +2,6 @@ package com.dpnevsky.creditcalculator.application.application.service;
 
 import com.dpnevsky.creditcalculator.application.api.rest.dto.SubmitApplicationRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.SubmitApplicationResponse;
-import com.dpnevsky.creditcalculator.application.application.exception.ApplicationNotFoundException;
 import com.dpnevsky.creditcalculator.application.application.port.out.ScoringClient;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationSubmitDataEntity;
@@ -26,6 +25,7 @@ public class SubmitApplicationService {
     private static final String SCORING_COMPLETED_STATUS = "SCORING_COMPLETED";
     private static final String SCORING_REJECTED_STATUS = "SCORING_REJECTED";
 
+    private final ApplicationAccessService applicationAccessService;
     private final ApplicationRepository applicationRepository;
     private final ApplicationSubmitDataRepository applicationSubmitDataRepository;
     private final ScoringSnapshotRepository scoringSnapshotRepository;
@@ -34,6 +34,7 @@ public class SubmitApplicationService {
     private final ScoringClient scoringClient;
 
     public SubmitApplicationService(
+            ApplicationAccessService applicationAccessService,
             ApplicationRepository applicationRepository,
             ApplicationSubmitDataRepository applicationSubmitDataRepository,
             ScoringSnapshotRepository scoringSnapshotRepository,
@@ -41,6 +42,7 @@ public class SubmitApplicationService {
             CreatePreliminaryOffersService createPreliminaryOffersService,
             ScoringClient scoringClient
     ) {
+        this.applicationAccessService = applicationAccessService;
         this.applicationRepository = applicationRepository;
         this.applicationSubmitDataRepository = applicationSubmitDataRepository;
         this.scoringSnapshotRepository = scoringSnapshotRepository;
@@ -50,9 +52,8 @@ public class SubmitApplicationService {
     }
 
     @Transactional
-    public SubmitApplicationResponse submit(UUID applicationId, SubmitApplicationRequest request) {
-        ApplicationEntity existingApplication = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new ApplicationNotFoundException(applicationId));
+    public SubmitApplicationResponse submit(UUID applicationId, String userEmail, SubmitApplicationRequest request) {
+        ApplicationEntity existingApplication = applicationAccessService.getOwnedApplication(applicationId, userEmail);
 
         if (!"DRAFT".equals(existingApplication.getStatus())) {
             throw new IllegalStateException("Only draft applications can be submitted for scoring");

@@ -9,37 +9,47 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+    const unsubscribe = AuthService.subscribe((nextUser) => {
+      if (isMounted) {
+        setUser(nextUser);
+      }
+    });
+
     const initAuth = async () => {
       try {
-        const currentUser = await AuthService.init();
-        setUser(currentUser);
+        await AuthService.init();
       } catch (err) {
         console.error('Failed to initialize auth', err);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
-    initAuth();
+
+    void initAuth();
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
-    const currentUser = await AuthService.login(username, password);
-    setUser(currentUser);
+    await AuthService.login(username, password);
   }, []);
 
   const register = useCallback(async (payload: RegistrationPayload) => {
-    const currentUser = await AuthService.register(payload);
-    setUser(currentUser);
+    await AuthService.register(payload);
   }, []);
 
   const logout = useCallback(async () => {
     await AuthService.logout();
-    setUser(null);
   }, []);
 
   const getToken = useCallback(async (): Promise<string | undefined> => {
-    await AuthService.refreshToken(30);
-    return AuthService.getToken();
+    return AuthService.getToken(30);
   }, []);
 
   return (

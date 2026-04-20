@@ -2,7 +2,6 @@ package com.dpnevsky.creditcalculator.application.application.service;
 
 import com.dpnevsky.creditcalculator.application.api.rest.dto.UpdateApplicationRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.UpdateApplicationResponse;
-import com.dpnevsky.creditcalculator.application.application.exception.ApplicationNotFoundException;
 import com.dpnevsky.creditcalculator.application.domain.prescoring.LegacyPrescoringService;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationRepository;
@@ -19,21 +18,23 @@ public class UpdateApplicationService {
     private static final String UPDATED_STATUS = "DRAFT";
     private static final String PRESCORING_REJECTED_STATUS = "PRESCORING_REJECTED";
 
+    private final ApplicationAccessService applicationAccessService;
     private final ApplicationRepository applicationRepository;
     private final LegacyPrescoringService legacyPrescoringService;
 
     public UpdateApplicationService(
+            ApplicationAccessService applicationAccessService,
             ApplicationRepository applicationRepository,
             LegacyPrescoringService legacyPrescoringService
     ) {
+        this.applicationAccessService = applicationAccessService;
         this.applicationRepository = applicationRepository;
         this.legacyPrescoringService = legacyPrescoringService;
     }
 
     @Transactional
-    public UpdateApplicationResponse update(UUID applicationId, UpdateApplicationRequest request) {
-        ApplicationEntity existingApplication = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new ApplicationNotFoundException(applicationId));
+    public UpdateApplicationResponse update(UUID applicationId, String userEmail, UpdateApplicationRequest request) {
+        ApplicationEntity existingApplication = applicationAccessService.getOwnedApplication(applicationId, userEmail);
 
         LegacyPrescoringService.PrescoringResult prescoringResult = legacyPrescoringService.evaluate(
                 request.amount(),
@@ -55,7 +56,7 @@ public class UpdateApplicationService {
                 request.firstName(),
                 request.lastName(),
                 request.middleName(),
-                request.email(),
+                existingApplication.getEmail(),
                 request.birthDate(),
                 request.passportSeries(),
                 request.passportNumber(),

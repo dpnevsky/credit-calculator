@@ -12,12 +12,12 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,20 +26,26 @@ class UpdateApplicationServiceTest {
 
     @Test
     void returnsNoOffersAfterSuccessfulUpdatePrescoring() {
+        ApplicationAccessService applicationAccessService = mock(ApplicationAccessService.class);
         LegacyPrescoringService prescoringService = mock(LegacyPrescoringService.class);
         ApplicationRepository applicationRepository = mock(ApplicationRepository.class);
-        UpdateApplicationService service = new UpdateApplicationService(applicationRepository, prescoringService);
+        UpdateApplicationService service = new UpdateApplicationService(
+                applicationAccessService,
+                applicationRepository,
+                prescoringService
+        );
         UUID applicationId = UUID.randomUUID();
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(buildApplication(applicationId, "DRAFT")));
+        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+                .thenReturn(buildApplication(applicationId, "DRAFT"));
         when(prescoringService.evaluate(any(), any(), any()))
                 .thenReturn(new LegacyPrescoringService.PrescoringResult(true, List.of()));
 
-        UpdateApplicationResponse response = service.update(applicationId, buildUpdateRequest());
+        UpdateApplicationResponse response = service.update(applicationId, "owner@example.com", buildUpdateRequest());
 
         assertEquals("DRAFT", response.status());
         assertTrue(response.preliminaryOffers().isEmpty());
-        verify(applicationRepository).save(any());
+        verify(applicationRepository).save(argThat(entity -> "ivan@example.com".equals(entity.getEmail())));
     }
 
     private UpdateApplicationRequest buildUpdateRequest() {
@@ -49,7 +55,7 @@ class UpdateApplicationServiceTest {
                 "Ivan",
                 "Ivanov",
                 "Ivanovich",
-                "ivan@example.com",
+                "spoofed@example.com",
                 LocalDate.of(1990, 1, 1),
                 "1234",
                 "567890"

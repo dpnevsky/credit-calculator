@@ -10,6 +10,7 @@ import type {
   RequestDocumentsRequest,
   RequestDocumentsResponse,
   ScoringResultResponse,
+  SelectOfferRequest,
   SelectOfferResponse,
   SubmitApplicationRequest,
   SubmitApplicationResponse,
@@ -112,12 +113,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-  try {
-    await AuthService.refreshToken(30);
-  } catch {
-    // token refresh failed, continue without token
-  }
-  const token = AuthService.getToken();
+  const token = await AuthService.getToken(30);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -227,8 +223,15 @@ const ApiService = {
     return response.data;
   },
 
-  async selectOffer(applicationId: string, offerId: string): Promise<SelectOfferResponse> {
-    const response = await api.post<SelectOfferResponse>(`/applications/${applicationId}/offers/${offerId}/select`);
+  async selectOffer(
+    applicationId: string,
+    offerId: string,
+    data?: SelectOfferRequest,
+  ): Promise<SelectOfferResponse> {
+    const response = await api.post<SelectOfferResponse>(
+      `/applications/${applicationId}/offers/${offerId}/select`,
+      data,
+    );
     return response.data;
   },
 

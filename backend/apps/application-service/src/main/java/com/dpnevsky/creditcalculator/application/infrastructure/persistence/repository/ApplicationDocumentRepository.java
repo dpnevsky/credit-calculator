@@ -11,5 +11,10 @@ public interface ApplicationDocumentRepository extends JpaRepository<Application
 
     Optional<ApplicationDocumentEntity> findByDocumentId(UUID documentId);
 
+    Optional<ApplicationDocumentEntity> findFirstByApplicationIdAndDocumentTypeOrderByGeneratedAtDesc(
+            UUID applicationId,
+            String documentType
+    );
+
     List<ApplicationDocumentEntity> findAllByApplicationIdOrderByGeneratedAtDesc(UUID applicationId);
 }

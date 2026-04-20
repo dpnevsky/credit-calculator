@@ -136,17 +136,18 @@ export interface SelectOfferResponse {
   message: string;
 }
 
+export interface SelectOfferRequest {
+  paymentType?: PaymentType;
+}
+
 export interface DocumentResponse {
   documentId: string;
-  applicationId: string;
-  requestId: string;
   documentType: string;
   format: string;
   fileName: string;
   mimeType: string;
   status: string;
   generatedAt: string;
-  receivedAt: string;
 }
 
 export interface RequestDocumentsResponse {

@@ -21,13 +21,10 @@ public class GetGeneratedDocumentsService {
                 .stream()
                 .map(document -> new GetGeneratedDocumentResponse(
                         document.getId(),
-                        document.getRequestId(),
-                        document.getApplicationId(),
                         document.getDocumentType(),
                         document.getFormat(),
                         document.getFileName(),
                         document.getMimeType(),
-                        document.getStorageKey(),
                         document.getStatus(),
                         document.getGeneratedAt()
                 ))

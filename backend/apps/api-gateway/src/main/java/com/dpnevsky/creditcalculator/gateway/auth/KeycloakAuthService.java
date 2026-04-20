@@ -78,14 +78,15 @@ public class KeycloakAuthService {
     }
 
     public Mono<AuthDtos.CurrentUserResponse> getCurrentUser(Jwt jwt) {
-        String userId = jwt.getSubject();
-        String email = jwt.getClaimAsString("email");
-        List<String> roles = extractRoles(jwt);
+        AuthDtos.CurrentUserResponse claimResponse = buildCurrentUserFromClaims(jwt);
+        if (!requiresAdminFallback(claimResponse)) {
+            return Mono.just(claimResponse);
+        }
 
         return adminAccessToken()
-                .flatMap(adminToken -> resolveCurrentUserId(adminToken, userId, email)
+                .flatMap(adminToken -> resolveCurrentUserId(adminToken, claimResponse.id(), claimResponse.email())
                         .flatMap(resolvedUserId -> getUser(adminToken, resolvedUserId)
-                                .map(user -> toCurrentUserResponse(user, jwt, email, roles))));
+                                .map(user -> mergeCurrentUserResponse(claimResponse, user))));
     }
 
     private Mono<String> adminAccessToken() {
@@ -285,21 +286,54 @@ public class KeycloakAuthService {
                         }));
     }
 
-    private AuthDtos.CurrentUserResponse toCurrentUserResponse(
-            Map<String, Object> user,
-            Jwt jwt,
-            String fallbackEmail,
-            List<String> roles
-    ) {
-        String id = getString(user, "id");
-        String email = nonBlankOrFallback(getString(user, "email"), fallbackEmail);
-        String firstName = getString(user, "firstName");
-        String lastName = getString(user, "lastName");
-        Map<String, Object> attributes = getAttributes(user);
-        String middleName = getFirstAttribute(attributes, MIDDLE_NAME_ATTRIBUTE, "middle_name");
-        String birthDate = getFirstAttribute(attributes, BIRTH_DATE_ATTRIBUTE, "birthdate");
+    AuthDtos.CurrentUserResponse buildCurrentUserFromClaims(Jwt jwt) {
+        return new AuthDtos.CurrentUserResponse(
+                normalize(jwt.getSubject()),
+                getClaimAsString(jwt, "email"),
+                getClaimAsString(jwt, "given_name", "firstName"),
+                getClaimAsString(jwt, "family_name", "lastName"),
+                getClaimAsString(jwt, MIDDLE_NAME_ATTRIBUTE, "middle_name"),
+                getClaimAsString(jwt, BIRTH_DATE_ATTRIBUTE, "birthdate"),
+                extractRoles(jwt)
+        );
+    }
 
-        return new AuthDtos.CurrentUserResponse(id, email, firstName, lastName, middleName, birthDate, roles);
+    boolean requiresAdminFallback(AuthDtos.CurrentUserResponse response) {
+        return isBlank(response.id())
+                || isBlank(response.email())
+                || isBlank(response.firstName())
+                || isBlank(response.lastName())
+                || isBlank(response.middleName())
+                || isBlank(response.birthDate());
+    }
+
+    AuthDtos.CurrentUserResponse mergeCurrentUserResponse(
+            AuthDtos.CurrentUserResponse claimResponse,
+            Map<String, Object> user
+    ) {
+        String id = nonBlankOrFallback(claimResponse.id(), getString(user, "id"));
+        String email = nonBlankOrFallback(claimResponse.email(), getString(user, "email"));
+        String firstName = nonBlankOrFallback(claimResponse.firstName(), getString(user, "firstName"));
+        String lastName = nonBlankOrFallback(claimResponse.lastName(), getString(user, "lastName"));
+        Map<String, Object> attributes = getAttributes(user);
+        String middleName = nonBlankOrFallback(
+                claimResponse.middleName(),
+                getFirstAttribute(attributes, MIDDLE_NAME_ATTRIBUTE, "middle_name")
+        );
+        String birthDate = nonBlankOrFallback(
+                claimResponse.birthDate(),
+                getFirstAttribute(attributes, BIRTH_DATE_ATTRIBUTE, "birthdate")
+        );
+
+        return new AuthDtos.CurrentUserResponse(
+                id,
+                email,
+                firstName,
+                lastName,
+                middleName,
+                birthDate,
+                claimResponse.roles()
+        );
     }
 
     @SuppressWarnings("unchecked")
@@ -331,8 +365,26 @@ public class KeycloakAuthService {
         return Optional.ofNullable(source.get(key)).map(Object::toString).orElse("");
     }
 
+    private String getClaimAsString(Jwt jwt, String... keys) {
+        for (String key : keys) {
+            String value = normalize(jwt.getClaimAsString(key));
+            if (!value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
+    }
+
     private String nonBlankOrFallback(String value, String fallback) {
-        return value != null && !value.isBlank() ? value : Optional.ofNullable(fallback).orElse("");
+        return !isBlank(value) ? value : normalize(fallback);
+    }
+
+    private boolean isBlank(String value) {
+        return normalize(value).isBlank();
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value;
     }
 
     @SuppressWarnings("unchecked")

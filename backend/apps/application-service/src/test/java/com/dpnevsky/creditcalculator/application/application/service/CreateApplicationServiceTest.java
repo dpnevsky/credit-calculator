@@ -13,6 +13,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,11 +29,11 @@ class CreateApplicationServiceTest {
         when(prescoringService.evaluate(any(), any(), any()))
                 .thenReturn(new LegacyPrescoringService.PrescoringResult(true, List.of()));
 
-        CreateApplicationResponse response = service.create(buildCreateRequest());
+        CreateApplicationResponse response = service.create(buildCreateRequest(), "owner@example.com");
 
         assertEquals("DRAFT", response.status());
         assertTrue(response.preliminaryOffers().isEmpty());
-        verify(applicationRepository).save(any());
+        verify(applicationRepository).save(argThat(entity -> "owner@example.com".equals(entity.getEmail())));
     }
 
     private CreateApplicationRequest buildCreateRequest() {

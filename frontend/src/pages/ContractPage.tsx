@@ -8,7 +8,6 @@ import {
   getContractDocument,
   getPaymentTypeLabel,
   getSelectedOffer,
-  getStoredPaymentType,
   loadContractPageData,
   resolveContractTerms,
 } from './applicationDetails.helpers';
@@ -63,9 +62,7 @@ const ContractPage: React.FC = () => {
   const offers = state?.offers ?? [];
   const selectedOffer = useMemo(() => getSelectedOffer(offers), [offers]);
   const contractDocument = useMemo(() => getContractDocument(documents), [documents]);
-  const paymentType = application
-    ? getStoredPaymentType(applicationId, application.paymentType)
-    : 'ANNUITY';
+  const paymentType = application?.paymentType ?? 'ANNUITY';
   const contractTerms = application
     ? resolveContractTerms(application, selectedOffer)
     : null;

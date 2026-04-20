@@ -19,7 +19,6 @@ dependencies {
 
     implementation("org.springframework.kafka:spring-kafka")
     implementation(libs.liquibase.core)
-    implementation(libs.openhtmltopdf.pdfbox)
 
     runtimeOnly(libs.postgresql)
 

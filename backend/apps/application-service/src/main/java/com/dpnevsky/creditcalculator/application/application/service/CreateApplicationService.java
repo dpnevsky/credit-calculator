@@ -31,7 +31,7 @@ public class CreateApplicationService {
     }
 
     @Transactional
-    public CreateApplicationResponse create(CreateApplicationRequest request) {
+    public CreateApplicationResponse create(CreateApplicationRequest request, String userEmail) {
         UUID applicationId = UUID.randomUUID();
         OffsetDateTime now = OffsetDateTime.now();
 
@@ -53,7 +53,7 @@ public class CreateApplicationService {
                 request.firstName(),
                 request.lastName(),
                 request.middleName(),
-                request.email(),
+                userEmail,
                 request.birthDate(),
                 request.passportSeries(),
                 request.passportNumber(),

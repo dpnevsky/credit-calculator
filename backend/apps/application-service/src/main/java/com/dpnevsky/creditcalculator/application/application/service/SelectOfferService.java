@@ -15,6 +15,7 @@ import java.util.UUID;
 public class SelectOfferService {
 
     private static final String OFFER_SELECTED_STATUS = "OFFER_SELECTED";
+    private static final String DEFAULT_PAYMENT_TYPE = "ANNUITY";
 
     private final ApplicationAccessService applicationAccessService;
     private final ApplicationRepository applicationRepository;
@@ -31,7 +32,12 @@ public class SelectOfferService {
     }
 
     @Transactional
-    public SelectOfferResponse selectOffer(UUID applicationId, String userEmail, UUID offerId) {
+    public SelectOfferResponse selectOffer(
+            UUID applicationId,
+            String userEmail,
+            UUID offerId,
+            String requestedPaymentType
+    ) {
         ApplicationEntity application = applicationAccessService.getOwnedApplication(applicationId, userEmail);
         ensureOfferSelectionAllowed(application.getStatus());
 
@@ -41,6 +47,7 @@ public class SelectOfferService {
         offerRepository.save(offer);
 
         application.setStatus(OFFER_SELECTED_STATUS);
+        application.setPaymentType(resolvePaymentType(application, requestedPaymentType));
         application.setUpdatedAt(OffsetDateTime.now());
         applicationRepository.save(application);
 
@@ -65,5 +72,15 @@ public class SelectOfferService {
                 .orElseThrow(() -> new IllegalStateException(
                         "Offer not found: offerId=" + offerId + ", applicationId=" + applicationId
                 ));
+    }
+
+    private String resolvePaymentType(ApplicationEntity application, String requestedPaymentType) {
+        if (requestedPaymentType != null && !requestedPaymentType.isBlank()) {
+            return requestedPaymentType;
+        }
+        if (application.getPaymentType() != null && !application.getPaymentType().isBlank()) {
+            return application.getPaymentType();
+        }
+        return DEFAULT_PAYMENT_TYPE;
     }
 }

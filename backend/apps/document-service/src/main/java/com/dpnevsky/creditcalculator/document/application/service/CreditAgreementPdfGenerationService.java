@@ -6,7 +6,6 @@ import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
@@ -26,18 +25,12 @@ public class CreditAgreementPdfGenerationService {
     private static final String PAYMENT_TYPE_DIFFERENTIAL = "DIFFERENTIAL";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
     private static final Locale RU_LOCALE = Locale.forLanguageTag("ru-RU");
-    private static final String PDF_FONT_FAMILY = "PdfArial";
-    private static final List<String> PDF_FONT_CANDIDATE_PATHS = List.of(
-            "C:/Windows/Fonts/arial.ttf",
-            "C:/Windows/Fonts/arialuni.ttf",
-            "C:/Windows/Fonts/segoeui.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
-            "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
-            "/usr/share/fonts/opentype/noto/NotoSans-Regular.ttf",
-            "/Library/Fonts/Arial Unicode.ttf",
-            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf"
-    );
+
+    private final BundledPdfFontProvider bundledPdfFontProvider;
+
+    public CreditAgreementPdfGenerationService(BundledPdfFontProvider bundledPdfFontProvider) {
+        this.bundledPdfFontProvider = bundledPdfFontProvider;
+    }
 
     public byte[] generate(CreditAgreementRenderData renderData, OffsetDateTime generatedAt) {
         String paymentType = normalizePaymentType(renderData.paymentType());
@@ -82,7 +75,7 @@ public class CreditAgreementPdfGenerationService {
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             PdfRendererBuilder builder = new PdfRendererBuilder();
             builder.useFastMode();
-            configureFonts(builder);
+            bundledPdfFontProvider.configure(builder);
             builder.withHtmlContent(html, null);
             builder.toStream(outputStream);
             builder.run();
@@ -263,7 +256,7 @@ public class CreditAgreementPdfGenerationService {
                             margin: 20mm 16mm 18mm 16mm;
                         }
                         body {
-                            font-family: PdfArial, Arial, sans-serif;
+                            font-family: PdfRoboto, Arial, sans-serif;
                             font-size: 11px;
                             line-height: 1.45;
                             color: #1f2937;
@@ -504,21 +497,6 @@ public class CreditAgreementPdfGenerationService {
                 escapeHtml(formatDate(contractData.lastPaymentDate())),
                 scheduleRows
         );
-    }
-
-    private void configureFonts(PdfRendererBuilder builder) {
-        String fontPath = PDF_FONT_CANDIDATE_PATHS.stream()
-                .filter(this::fontExists)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "No supported PDF font found for credit agreement generation"
-                ));
-
-        builder.useFont(new File(fontPath), PDF_FONT_FAMILY);
-    }
-
-    private boolean fontExists(String path) {
-        return new File(path).exists();
     }
 
     private String formatMoney(BigDecimal value) {

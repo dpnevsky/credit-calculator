@@ -2,8 +2,10 @@ package com.dpnevsky.creditcalculator.application.application.service;
 
 import com.dpnevsky.creditcalculator.application.api.rest.dto.RequestDocumentsResponse;
 import com.dpnevsky.creditcalculator.application.application.port.out.DocumentCommandPublisher;
+import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationDocumentEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.OfferEntity;
+import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationDocumentRepository;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationRepository;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.OfferRepository;
 import com.dpnevsky.creditcalculator.contracts.document.events.CreditAgreementRenderData;
@@ -19,7 +21,6 @@ import java.util.UUID;
 @Service
 public class RequestDocumentsService {
 
-    private static final String SCORING_COMPLETED_STATUS = "SCORING_COMPLETED";
     private static final String OFFER_SELECTED_STATUS = "OFFER_SELECTED";
     private static final String DOCUMENTS_REQUESTED_STATUS = "DOCUMENTS_REQUESTED";
     private static final String DOCUMENTS_READY_STATUS = "DOCUMENTS_READY";
@@ -29,17 +30,20 @@ public class RequestDocumentsService {
     private static final String DOCUMENT_TEMPLATE_VERSION = "v2";
 
     private final ApplicationAccessService applicationAccessService;
+    private final ApplicationDocumentRepository applicationDocumentRepository;
     private final ApplicationRepository applicationRepository;
     private final OfferRepository offerRepository;
     private final DocumentCommandPublisher documentCommandPublisher;
 
     public RequestDocumentsService(
             ApplicationAccessService applicationAccessService,
+            ApplicationDocumentRepository applicationDocumentRepository,
             ApplicationRepository applicationRepository,
             OfferRepository offerRepository,
             DocumentCommandPublisher documentCommandPublisher
     ) {
         this.applicationAccessService = applicationAccessService;
+        this.applicationDocumentRepository = applicationDocumentRepository;
         this.applicationRepository = applicationRepository;
         this.offerRepository = offerRepository;
         this.documentCommandPublisher = documentCommandPublisher;
@@ -50,15 +54,42 @@ public class RequestDocumentsService {
         ApplicationEntity existingApplication = applicationAccessService.getOwnedApplication(applicationId, userEmail);
         ensureDocumentsRequestAllowed(existingApplication.getStatus());
 
+        ApplicationDocumentEntity existingDocument = applicationDocumentRepository
+                .findFirstByApplicationIdAndDocumentTypeOrderByGeneratedAtDesc(applicationId, DOCUMENT_TYPE)
+                .orElse(null);
+
+        if (existingDocument != null) {
+            return new RequestDocumentsResponse(
+                    applicationId,
+                    DOCUMENTS_READY_STATUS,
+                    "Credit agreement already exists"
+            );
+        }
+
+        if (DOCUMENTS_REQUESTED_STATUS.equals(existingApplication.getStatus())) {
+            return new RequestDocumentsResponse(
+                    applicationId,
+                    DOCUMENTS_REQUESTED_STATUS,
+                    "Document generation is already in progress"
+            );
+        }
+
+        if (DOCUMENTS_READY_STATUS.equals(existingApplication.getStatus())) {
+            return new RequestDocumentsResponse(
+                    applicationId,
+                    DOCUMENTS_READY_STATUS,
+                    "Credit agreement is already being finalized"
+            );
+        }
+
         OffsetDateTime now = OffsetDateTime.now();
         String resolvedPaymentType = resolvePaymentType(existingApplication, paymentType);
-        String nextStatus = resolveNextStatus(existingApplication.getStatus());
         OfferEntity selectedOffer = getSelectedOffer(applicationId);
 
         applicationRepository.save(buildRequestedDocumentsApplication(
                 existingApplication,
                 resolvedPaymentType,
-                nextStatus,
+                DOCUMENTS_REQUESTED_STATUS,
                 now
         ));
         documentCommandPublisher.publishDocumentGenerationRequested(
@@ -67,18 +98,17 @@ public class RequestDocumentsService {
 
         return new RequestDocumentsResponse(
                 applicationId,
-                nextStatus,
+                DOCUMENTS_REQUESTED_STATUS,
                 "Document generation has been requested"
         );
     }
 
     private void ensureDocumentsRequestAllowed(String currentStatus) {
-        if (!SCORING_COMPLETED_STATUS.equals(currentStatus)
-                && !OFFER_SELECTED_STATUS.equals(currentStatus)
+        if (!OFFER_SELECTED_STATUS.equals(currentStatus)
                 && !DOCUMENTS_REQUESTED_STATUS.equals(currentStatus)
                 && !DOCUMENTS_READY_STATUS.equals(currentStatus)) {
             throw new IllegalStateException(
-                    "Documents can be requested only for applications with status SCORING_COMPLETED, OFFER_SELECTED, DOCUMENTS_REQUESTED or DOCUMENTS_READY"
+                    "Documents can be requested only for applications with status OFFER_SELECTED, DOCUMENTS_REQUESTED or DOCUMENTS_READY"
             );
         }
     }
@@ -105,12 +135,6 @@ public class RequestDocumentsService {
                 updatedAt,
                 resolvedPaymentType
         );
-    }
-
-    private String resolveNextStatus(String currentStatus) {
-        return DOCUMENTS_READY_STATUS.equals(currentStatus)
-                ? DOCUMENTS_READY_STATUS
-                : DOCUMENTS_REQUESTED_STATUS;
     }
 
     private OfferEntity getSelectedOffer(UUID applicationId) {
@@ -156,11 +180,11 @@ public class RequestDocumentsService {
     }
 
     private String resolvePaymentType(ApplicationEntity application, String requestedPaymentType) {
-        if (requestedPaymentType != null && !requestedPaymentType.isBlank()) {
-            return requestedPaymentType;
-        }
         if (application.getPaymentType() != null && !application.getPaymentType().isBlank()) {
             return application.getPaymentType();
+        }
+        if (requestedPaymentType != null && !requestedPaymentType.isBlank()) {
+            return requestedPaymentType;
         }
         return DEFAULT_PAYMENT_TYPE;
     }

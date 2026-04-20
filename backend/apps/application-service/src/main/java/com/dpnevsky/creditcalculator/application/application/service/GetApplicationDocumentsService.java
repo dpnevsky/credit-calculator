@@ -27,15 +27,11 @@ public class GetApplicationDocumentsService {
         return applicationDocumentRepository.findAllByApplicationIdOrderByGeneratedAtDesc(applicationId)
                 .stream()
                 .map(document -> new GetApplicationDocumentResponse(
-                        document.getId(),
-                        document.getApplicationId(),
-                        document.getRequestId(),
                         document.getDocumentId(),
                         document.getDocumentType(),
                         document.getFormat(),
                         document.getFileName(),
                         document.getMimeType(),
-                        document.getStorageKey(),
                         document.getStatus(),
                         document.getGeneratedAt()
                 ))

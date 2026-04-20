@@ -22,9 +22,9 @@ const INITIAL_FORM_STATE: LoanFormState = {
 };
 
 const CLEARED_FORM_STATE: LoanFormState = {
-  amount: '0',
-  months: '0',
-  rate: '0',
+  amount: '',
+  months: '',
+  rate: '',
   paymentType: 'annuity',
 };
 

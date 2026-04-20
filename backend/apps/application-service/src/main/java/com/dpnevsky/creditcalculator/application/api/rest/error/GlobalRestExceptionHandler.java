@@ -1,5 +1,6 @@
 package com.dpnevsky.creditcalculator.application.api.rest.error;
 
+import com.dpnevsky.creditcalculator.application.application.exception.ApplicationDocumentNotFoundException;
 import com.dpnevsky.creditcalculator.application.application.exception.ApplicationNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,11 +37,22 @@ public class GlobalRestExceptionHandler {
 
     @ExceptionHandler(ApplicationNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleApplicationNotFound(ApplicationNotFoundException exception) {
+        return toNotFoundResponse(exception.getMessage());
+    }
+
+    @ExceptionHandler(ApplicationDocumentNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleApplicationDocumentNotFound(
+            ApplicationDocumentNotFoundException exception
+    ) {
+        return toNotFoundResponse(exception.getMessage());
+    }
+
+    private ResponseEntity<Map<String, Object>> toNotFoundResponse(String message) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", OffsetDateTime.now());
         body.put("status", HttpStatus.NOT_FOUND.value());
         body.put("error", "NOT_FOUND");
-        body.put("message", exception.getMessage());
+        body.put("message", message);
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }

@@ -23,17 +23,19 @@ class SelectOfferServiceTest {
 
     @Test
     void rejectsSelectingOfferForDraftApplication() {
+        ApplicationAccessService applicationAccessService = mock(ApplicationAccessService.class);
         ApplicationRepository applicationRepository = mock(ApplicationRepository.class);
         OfferRepository offerRepository = mock(OfferRepository.class);
-        SelectOfferService service = new SelectOfferService(applicationRepository, offerRepository);
+        SelectOfferService service = new SelectOfferService(applicationAccessService, applicationRepository, offerRepository);
         UUID applicationId = UUID.randomUUID();
         UUID offerId = UUID.randomUUID();
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(buildApplication(applicationId, "DRAFT")));
+        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+                .thenReturn(buildApplication(applicationId, "DRAFT"));
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> service.selectOffer(applicationId, offerId)
+                () -> service.selectOffer(applicationId, "owner@example.com", offerId, "DIFFERENTIAL")
         );
 
         assertEquals(
@@ -44,22 +46,26 @@ class SelectOfferServiceTest {
 
     @Test
     void allowsSelectingOfferAfterScoringCompleted() {
+        ApplicationAccessService applicationAccessService = mock(ApplicationAccessService.class);
         ApplicationRepository applicationRepository = mock(ApplicationRepository.class);
         OfferRepository offerRepository = mock(OfferRepository.class);
-        SelectOfferService service = new SelectOfferService(applicationRepository, offerRepository);
+        SelectOfferService service = new SelectOfferService(applicationAccessService, applicationRepository, offerRepository);
         UUID applicationId = UUID.randomUUID();
         UUID offerId = UUID.randomUUID();
         OfferEntity offer = buildOffer(applicationId, offerId);
 
-        when(applicationRepository.findById(applicationId))
-                .thenReturn(Optional.of(buildApplication(applicationId, "SCORING_COMPLETED")));
+        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+                .thenReturn(buildApplication(applicationId, "SCORING_COMPLETED"));
         when(offerRepository.findByIdAndApplicationId(offerId, applicationId)).thenReturn(Optional.of(offer));
 
-        var response = service.selectOffer(applicationId, offerId);
+        var response = service.selectOffer(applicationId, "owner@example.com", offerId, "DIFFERENTIAL");
 
         assertEquals("OFFER_SELECTED", response.applicationStatus());
         verify(offerRepository).save(offer);
-        verify(applicationRepository).save(org.mockito.ArgumentMatchers.any());
+        verify(applicationRepository).save(org.mockito.ArgumentMatchers.argThat(
+                application -> "DIFFERENTIAL".equals(application.getPaymentType())
+                        && "OFFER_SELECTED".equals(application.getStatus())
+        ));
     }
 
     private ApplicationEntity buildApplication(UUID applicationId, String status) {

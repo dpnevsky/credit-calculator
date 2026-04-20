@@ -82,7 +82,7 @@
 - **Функции**:
   - Маршрутизация запросов к микросервисам
   - CORS-политика (глобальная)
-  - OAuth2/JWT-валидация токенов (опционально, через `security.debug-mode`)
+  - OAuth2/JWT-валидация токенов через Keycloak issuer/JWK configuration
   - Добавление correlation ID (`X-Correlation-Id`)
   - Проксирование actuator-эндпоинтов
 
@@ -252,7 +252,7 @@ api.interceptors.request.use(async (config) => {
 - **Конфигурация**:
   - `issuer-uri`: `http://localhost:8180/realms/credit-calculator`
   - `jwk-set-uri`: `http://localhost:8180/realms/credit-calculator/protocol/openid-connect/certs`
-- **Debug Mode**: Переключатель `security.debug-mode=true` отключает проверку JWT (для разработки)
+- **JWT Validation**: `security.debug-mode` is a stale docs reference; current gateway configuration validates JWT tokens through Keycloak in all environments
 
 #### Keycloak
 
@@ -292,7 +292,7 @@ Vite Dev Proxy
     ▼
 API Gateway (localhost:8080)
     │
-    │  1. Валидация JWT (если debug-mode=false)
+    │  1. Валидация JWT через Keycloak issuer/JWK
     │  2. Добавление X-Correlation-Id
     │  3. Маршрутизация по Path
     │
@@ -361,9 +361,9 @@ deploy/k8s/
 
 | Окружение | Описание | Security |
 |-----------|----------|----------|
-| **local** | Локальная разработка | debug-mode=true |
-| **dev** | Тестовая среда | debug-mode=false, Keycloak |
-| **prod** | Production | debug-mode=false, Keycloak, TLS |
+| **local** | Локальная разработка | Keycloak JWT validation |
+| **dev** | Тестовая среда | Keycloak JWT validation |
+| **prod** | Production | Keycloak JWT validation, TLS |
 
 ---
 

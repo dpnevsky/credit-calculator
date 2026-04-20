@@ -36,7 +36,6 @@ export type ContractTerms = {
 };
 
 export const ACCOUNT_NUMBER_LENGTH = 20;
-const PAYMENT_TYPE_STORAGE_KEY = 'cc_payment_type_';
 
 export const formatMoney = (value: number): string =>
   new Intl.NumberFormat('ru-RU', {
@@ -208,18 +207,6 @@ export const resolveContractTerms = (
   rate: selectedOffer?.rate ?? null,
 });
 
-export const getStoredPaymentType = (
-  applicationId: string | undefined,
-  fallback: PaymentType,
-): PaymentType => {
-  if (!applicationId) {
-    return fallback;
-  }
-
-  const rawValue = localStorage.getItem(`${PAYMENT_TYPE_STORAGE_KEY}${applicationId}`);
-  return rawValue === 'DIFFERENTIAL' || rawValue === 'ANNUITY' ? rawValue : fallback;
-};
-
 export const downloadBlobAsFile = (blob: Blob, fileName: string): void => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -284,8 +271,7 @@ export const loadContractPageData = async (
 
 export const refreshDocumentsAfterRequest = async (
   applicationId: string,
-  paymentType: PaymentType,
 ): Promise<DocumentResponse[]> => {
-  await ApiService.requestDocuments(applicationId, { paymentType });
+  await ApiService.requestDocuments(applicationId);
   return ApiService.getDocuments(applicationId);
 };

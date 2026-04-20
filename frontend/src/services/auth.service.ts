@@ -38,10 +38,13 @@ interface TokenResponse {
 
 type AuthAction = 'login' | 'register' | 'refresh';
 type ProfileLoadAction = 'login' | 'register';
+type AuthStateListener = (user: User | null) => void;
 
 const ACCESS_TOKEN_KEY = 'cc_access_token';
 const REFRESH_TOKEN_KEY = 'cc_refresh_token';
-let currentUser: User | null = null;
+const EXPIRES_AT_KEY = 'cc_access_token_expires_at';
+const authStateListeners = new Set<AuthStateListener>();
+let refreshPromise: Promise<User | null> | null = null;
 
 function getAccessToken(): string | undefined {
   return localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined;
@@ -51,14 +54,39 @@ function getRefreshToken(): string | undefined {
   return localStorage.getItem(REFRESH_TOKEN_KEY) ?? undefined;
 }
 
+function getExpiresAt(): number | undefined {
+  const rawValue = localStorage.getItem(EXPIRES_AT_KEY);
+  if (!rawValue) {
+    return undefined;
+  }
+
+  const expiresAt = Number(rawValue);
+  return Number.isFinite(expiresAt) ? expiresAt : undefined;
+}
+
 function saveTokens(tokens: TokenResponse): void {
   localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+  localStorage.setItem(EXPIRES_AT_KEY, String(Date.now() + tokens.expiresIn * 1000));
 }
 
 function clearTokens(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(EXPIRES_AT_KEY);
+}
+
+function emitAuthState(user: User | null): void {
+  authStateListeners.forEach((listener) => listener(user));
+}
+
+function isTokenExpiringSoon(minValidity: number): boolean {
+  const expiresAt = getExpiresAt();
+  if (!expiresAt) {
+    return true;
+  }
+
+  return expiresAt - Date.now() <= minValidity * 1000;
 }
 
 function toUser(profile: CurrentUserProfileResponse, token: string): User {
@@ -118,9 +146,7 @@ async function fetchCurrentUserProfile(token: string): Promise<User> {
     },
   });
   const profile = await parseProfileResponse(response);
-  const user = toUser(profile, token);
-  currentUser = user;
-  return user;
+  return toUser(profile, token);
 }
 
 function getProfileLoadErrorMessage(action: ProfileLoadAction): string {
@@ -136,28 +162,71 @@ async function loadCurrentUserAfterAuth(
   saveTokens(tokens);
 
   try {
-    return await fetchCurrentUserProfile(tokens.accessToken);
+    const user = await fetchCurrentUserProfile(tokens.accessToken);
+    emitAuthState(user);
+    return user;
   } catch {
     clearTokens();
-    currentUser = null;
+    emitAuthState(null);
     throw new Error(getProfileLoadErrorMessage(action));
   }
+}
+
+async function refreshSession(): Promise<User | null> {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    clearTokens();
+    emitAuthState(null);
+    return null;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+      const tokens = await parseResponse(response, 'refresh');
+      saveTokens(tokens);
+
+      const user = await fetchCurrentUserProfile(tokens.accessToken);
+      emitAuthState(user);
+      return user;
+    } catch {
+      clearTokens();
+      emitAuthState(null);
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
 
 const AuthService = {
   async init(): Promise<User | null> {
     const token = getAccessToken();
-    if (!token) {
-      currentUser = null;
+    if (!token && !getRefreshToken()) {
+      emitAuthState(null);
       return null;
     }
 
+    if (!token || isTokenExpiringSoon(30)) {
+      return refreshSession();
+    }
+
     try {
-      return await fetchCurrentUserProfile(token);
+      const user = await fetchCurrentUserProfile(token);
+      emitAuthState(user);
+      return user;
     } catch {
-      clearTokens();
-      currentUser = null;
-      return null;
+      return refreshSession();
     }
   },
 
@@ -192,45 +261,38 @@ const AuthService = {
     }
 
     clearTokens();
-    currentUser = null;
+    emitAuthState(null);
   },
 
-  getToken(): string | undefined {
-    return getAccessToken();
+  async getToken(minValidity: number = 30): Promise<string | undefined> {
+    const token = getAccessToken();
+    if (token && !isTokenExpiringSoon(minValidity)) {
+      return token;
+    }
+
+    const refreshedUser = await refreshSession();
+    return refreshedUser?.token;
   },
 
   async refreshToken(minValidity: number = 30): Promise<boolean> {
-    void minValidity;
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) {
-      return false;
-    }
-
-    try {
-      const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
-      const tokens = await parseResponse(response, 'refresh');
-      saveTokens(tokens);
-      if (currentUser) {
-        await fetchCurrentUserProfile(tokens.accessToken);
-      }
+    const token = getAccessToken();
+    if (token && !isTokenExpiringSoon(minValidity)) {
       return true;
-    } catch {
-      clearTokens();
-      currentUser = null;
-      return false;
     }
-  },
 
-  getCurrentUser(): User | null {
-    return currentUser;
+    return (await refreshSession()) !== null;
   },
 
   isAuthenticated(): boolean {
     return !!getAccessToken();
+  },
+
+  subscribe(listener: AuthStateListener): () => void {
+    authStateListeners.add(listener);
+
+    return () => {
+      authStateListeners.delete(listener);
+    };
   },
 };
 

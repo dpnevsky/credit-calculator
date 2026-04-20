@@ -8,6 +8,7 @@ import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationScor
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetOfferResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.RequestDocumentsRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.RequestDocumentsResponse;
+import com.dpnevsky.creditcalculator.application.api.rest.dto.SelectOfferRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.SelectOfferResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.SubmitApplicationRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.SubmitApplicationResponse;
@@ -83,8 +84,11 @@ public class ApplicationController {
     }
 
     @PostMapping("/api/applications")
-    public CreateApplicationResponse createApplication(@Valid @RequestBody CreateApplicationRequest request) {
-        return createApplicationService.create(request);
+    public CreateApplicationResponse createApplication(
+            @Valid @RequestBody CreateApplicationRequest request,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return createApplicationService.create(request, extractUserEmail(jwt));
     }
 
     @GetMapping("/api/applications/{applicationId}")
@@ -107,17 +111,19 @@ public class ApplicationController {
     @PatchMapping("/api/applications/{applicationId}")
     public UpdateApplicationResponse updateApplication(
             @PathVariable UUID applicationId,
-            @Valid @RequestBody UpdateApplicationRequest request
+            @Valid @RequestBody UpdateApplicationRequest request,
+            @AuthenticationPrincipal Jwt jwt
     ) {
-        return updateApplicationService.update(applicationId, request);
+        return updateApplicationService.update(applicationId, extractUserEmail(jwt), request);
     }
 
     @PostMapping("/api/applications/{applicationId}/submit")
     public SubmitApplicationResponse submitApplication(
             @PathVariable UUID applicationId,
-            @Valid @RequestBody SubmitApplicationRequest request
+            @Valid @RequestBody SubmitApplicationRequest request,
+            @AuthenticationPrincipal Jwt jwt
     ) {
-        return submitApplicationService.submit(applicationId, request);
+        return submitApplicationService.submit(applicationId, extractUserEmail(jwt), request);
     }
 
     @GetMapping("/api/applications/{applicationId}/scoring-result")
@@ -172,9 +178,15 @@ public class ApplicationController {
     public SelectOfferResponse selectOffer(
             @PathVariable UUID applicationId,
             @PathVariable UUID offerId,
-            @AuthenticationPrincipal Jwt jwt
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody(required = false) SelectOfferRequest request
     ) {
-        return selectOfferService.selectOffer(applicationId, extractUserEmail(jwt), offerId);
+        return selectOfferService.selectOffer(
+                applicationId,
+                extractUserEmail(jwt),
+                offerId,
+                request == null ? null : request.paymentType()
+        );
     }
 
     private ResponseEntity<byte[]> toDocumentDownloadResponse(

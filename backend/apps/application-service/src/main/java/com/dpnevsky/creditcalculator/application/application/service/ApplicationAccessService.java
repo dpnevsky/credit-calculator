@@ -1,6 +1,7 @@
 package com.dpnevsky.creditcalculator.application.application.service;
 
 import com.dpnevsky.creditcalculator.application.application.exception.ApplicationNotFoundException;
+import com.dpnevsky.creditcalculator.application.application.exception.ApplicationDocumentNotFoundException;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationDocumentEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationDocumentRepository;
@@ -30,9 +31,7 @@ public class ApplicationAccessService {
 
     public ApplicationDocumentEntity getOwnedDocument(UUID documentId, String userEmail) {
         ApplicationDocumentEntity document = applicationDocumentRepository.findByDocumentId(documentId)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Application document not found. documentId=" + documentId
-                ));
+                .orElseThrow(() -> new ApplicationDocumentNotFoundException(documentId));
 
         getOwnedApplication(document.getApplicationId(), userEmail);
         return document;

@@ -15,11 +15,9 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -32,6 +30,7 @@ class SubmitApplicationServiceTest {
 
     @Test
     void createsScoredOffersAfterApproval() {
+        ApplicationAccessService applicationAccessService = mock(ApplicationAccessService.class);
         ApplicationRepository applicationRepository = mock(ApplicationRepository.class);
         ApplicationSubmitDataRepository submitDataRepository = mock(ApplicationSubmitDataRepository.class);
         ScoringSnapshotRepository scoringSnapshotRepository = mock(ScoringSnapshotRepository.class);
@@ -39,6 +38,7 @@ class SubmitApplicationServiceTest {
         CreatePreliminaryOffersService createOffersService = mock(CreatePreliminaryOffersService.class);
         ScoringClient scoringClient = mock(ScoringClient.class);
         SubmitApplicationService service = new SubmitApplicationService(
+                applicationAccessService,
                 applicationRepository,
                 submitDataRepository,
                 scoringSnapshotRepository,
@@ -48,10 +48,11 @@ class SubmitApplicationServiceTest {
         );
         UUID applicationId = UUID.randomUUID();
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(buildApplication(applicationId, "DRAFT")));
+        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+                .thenReturn(buildApplication(applicationId, "DRAFT"));
         when(scoringClient.evaluate(any())).thenReturn(buildScoringResponse("APPROVED", List.of()));
 
-        var response = service.submit(applicationId, buildSubmitRequest(false, ""));
+        var response = service.submit(applicationId, "owner@example.com", buildSubmitRequest(false, ""));
 
         assertEquals("SCORING_COMPLETED", response.status());
         verify(createOffersService).create(
@@ -66,6 +67,7 @@ class SubmitApplicationServiceTest {
 
     @Test
     void removesOffersAfterRejection() {
+        ApplicationAccessService applicationAccessService = mock(ApplicationAccessService.class);
         ApplicationRepository applicationRepository = mock(ApplicationRepository.class);
         ApplicationSubmitDataRepository submitDataRepository = mock(ApplicationSubmitDataRepository.class);
         ScoringSnapshotRepository scoringSnapshotRepository = mock(ScoringSnapshotRepository.class);
@@ -73,6 +75,7 @@ class SubmitApplicationServiceTest {
         CreatePreliminaryOffersService createOffersService = mock(CreatePreliminaryOffersService.class);
         ScoringClient scoringClient = mock(ScoringClient.class);
         SubmitApplicationService service = new SubmitApplicationService(
+                applicationAccessService,
                 applicationRepository,
                 submitDataRepository,
                 scoringSnapshotRepository,
@@ -82,13 +85,14 @@ class SubmitApplicationServiceTest {
         );
         UUID applicationId = UUID.randomUUID();
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(buildApplication(applicationId, "DRAFT")));
+        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+                .thenReturn(buildApplication(applicationId, "DRAFT"));
         when(scoringClient.evaluate(any())).thenReturn(buildScoringResponse(
                 "REJECTED",
                 List.of("AMOUNT_EXCEEDS_24_MONTHS_OF_SALARY")
         ));
 
-        var response = service.submit(applicationId, buildSubmitRequest(false, ""));
+        var response = service.submit(applicationId, "owner@example.com", buildSubmitRequest(false, ""));
 
         assertEquals("SCORING_REJECTED", response.status());
         verify(offerRepository).deleteAllByApplicationId(applicationId);
@@ -97,6 +101,7 @@ class SubmitApplicationServiceTest {
 
     @Test
     void rejectsResubmissionForNonDraftStatus() {
+        ApplicationAccessService applicationAccessService = mock(ApplicationAccessService.class);
         ApplicationRepository applicationRepository = mock(ApplicationRepository.class);
         ApplicationSubmitDataRepository submitDataRepository = mock(ApplicationSubmitDataRepository.class);
         ScoringSnapshotRepository scoringSnapshotRepository = mock(ScoringSnapshotRepository.class);
@@ -104,6 +109,7 @@ class SubmitApplicationServiceTest {
         CreatePreliminaryOffersService createOffersService = mock(CreatePreliminaryOffersService.class);
         ScoringClient scoringClient = mock(ScoringClient.class);
         SubmitApplicationService service = new SubmitApplicationService(
+                applicationAccessService,
                 applicationRepository,
                 submitDataRepository,
                 scoringSnapshotRepository,
@@ -113,11 +119,12 @@ class SubmitApplicationServiceTest {
         );
         UUID applicationId = UUID.randomUUID();
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(buildApplication(applicationId, "SCORING_COMPLETED")));
+        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+                .thenReturn(buildApplication(applicationId, "SCORING_COMPLETED"));
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> service.submit(applicationId, buildSubmitRequest(false, ""))
+                () -> service.submit(applicationId, "owner@example.com", buildSubmitRequest(false, ""))
         );
 
         assertEquals("Only draft applications can be submitted for scoring", exception.getMessage());
