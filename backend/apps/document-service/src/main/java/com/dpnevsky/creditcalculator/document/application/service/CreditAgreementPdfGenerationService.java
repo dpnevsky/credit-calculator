@@ -1,15 +1,12 @@
-package com.dpnevsky.creditcalculator.application.application.service;
+package com.dpnevsky.creditcalculator.document.application.service;
 
-import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
-import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.OfferEntity;
-import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationRepository;
-import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.OfferRepository;
+import com.dpnevsky.creditcalculator.contracts.document.events.CreditAgreementRenderData;
 import com.dpnevsky.creditcalculator.calculator.service.util.ServiceForCalculate;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
@@ -19,14 +16,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
-public class GenerateApplicationContractPdfService {
+public class CreditAgreementPdfGenerationService {
 
-    private static final String CREDIT_AGREEMENT_DOCUMENT_TYPE = "CREDIT_AGREEMENT";
     private static final String PAYMENT_TYPE_ANNUITY = "ANNUITY";
     private static final String PAYMENT_TYPE_DIFFERENTIAL = "DIFFERENTIAL";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
@@ -44,35 +39,12 @@ public class GenerateApplicationContractPdfService {
             "/System/Library/Fonts/Supplemental/Arial Unicode.ttf"
     );
 
-    private final ApplicationRepository applicationRepository;
-    private final OfferRepository offerRepository;
-
-    public GenerateApplicationContractPdfService(
-            ApplicationRepository applicationRepository,
-            OfferRepository offerRepository
-    ) {
-        this.applicationRepository = applicationRepository;
-        this.offerRepository = offerRepository;
-    }
-
-    public boolean supports(String documentType, String format) {
-        return CREDIT_AGREEMENT_DOCUMENT_TYPE.equals(documentType) && "PDF".equalsIgnoreCase(format);
-    }
-
-    public byte[] generate(UUID applicationId, OffsetDateTime generatedAt) {
-        ApplicationEntity application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new IllegalStateException("Application not found. applicationId=" + applicationId));
-
-        OfferEntity offer = offerRepository.findFirstByApplicationIdAndSelectedTrue(applicationId)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Selected offer not found for contract generation. applicationId=" + applicationId
-                ));
-
-        String paymentType = normalizePaymentType(application.getPaymentType());
+    public byte[] generate(CreditAgreementRenderData renderData, OffsetDateTime generatedAt) {
+        String paymentType = normalizePaymentType(renderData.paymentType());
         List<PaymentScheduleRow> schedule = buildPaymentSchedule(
-                offer.getTotalAmount(),
-                offer.getTermMonths(),
-                offer.getRate(),
+                renderData.creditAmount(),
+                renderData.termMonths(),
+                renderData.annualRate(),
                 generatedAt.toLocalDate(),
                 paymentType
         );
@@ -87,14 +59,14 @@ public class GenerateApplicationContractPdfService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        BigDecimal psk = calculatePsk(offer, schedule, paymentType);
+        BigDecimal psk = calculatePsk(renderData, schedule, paymentType);
 
         ContractData contractData = new ContractData(
-                buildBorrowerName(application),
-                buildPassportDisplay(application),
-                offer.getTotalAmount().setScale(2, RoundingMode.HALF_UP),
-                offer.getTermMonths(),
-                offer.getRate().setScale(2, RoundingMode.HALF_UP),
+                buildBorrowerName(renderData),
+                buildPassportDisplay(renderData),
+                renderData.creditAmount().setScale(2, RoundingMode.HALF_UP),
+                renderData.termMonths(),
+                renderData.annualRate().setScale(2, RoundingMode.HALF_UP),
                 schedule.get(0).paymentAmount().setScale(2, RoundingMode.HALF_UP),
                 totalPayment,
                 totalInterest,
@@ -116,7 +88,7 @@ public class GenerateApplicationContractPdfService {
             builder.run();
             return outputStream.toByteArray();
         } catch (Exception exception) {
-            throw new IllegalStateException("Failed to generate application contract PDF", exception);
+            throw new IllegalStateException("Failed to generate credit agreement PDF", exception);
         }
     }
 
@@ -209,20 +181,24 @@ public class GenerateApplicationContractPdfService {
         return rows;
     }
 
-    private BigDecimal calculatePsk(OfferEntity offer, List<PaymentScheduleRow> schedule, String paymentType) {
+    private BigDecimal calculatePsk(
+            CreditAgreementRenderData renderData,
+            List<PaymentScheduleRow> schedule,
+            String paymentType
+    ) {
         if (PAYMENT_TYPE_DIFFERENTIAL.equals(paymentType)) {
             return ServiceForCalculate.calculatePSK(
-                    offer.getTotalAmount(),
+                    renderData.creditAmount(),
                     schedule.stream().map(PaymentScheduleRow::paymentAmount).toList(),
-                    offer.getRate()
+                    renderData.annualRate()
             );
         }
 
         return ServiceForCalculate.calculatePSK(
-                offer.getTotalAmount(),
+                renderData.creditAmount(),
                 schedule.get(0).paymentAmount(),
-                offer.getTermMonths(),
-                offer.getRate()
+                renderData.termMonths(),
+                renderData.annualRate()
         );
     }
 
@@ -236,15 +212,18 @@ public class GenerateApplicationContractPdfService {
         return PAYMENT_TYPE_DIFFERENTIAL.equals(paymentType) ? "Дифференцированный" : "Аннуитетный";
     }
 
-    private String buildBorrowerName(ApplicationEntity application) {
-        return Stream.of(application.getLastName(), application.getFirstName(), application.getMiddleName())
+    private String buildBorrowerName(CreditAgreementRenderData renderData) {
+        return Stream.of(
+                        renderData.borrowerLastName(),
+                        renderData.borrowerFirstName(),
+                        renderData.borrowerMiddleName()
+                )
                 .filter(value -> value != null && !value.isBlank())
-                .reduce((left, right) -> left + " " + right)
-                .orElse("Заемщик");
+                .collect(Collectors.joining(" "));
     }
 
-    private String buildPassportDisplay(ApplicationEntity application) {
-        return "Паспорт " + application.getPassportSeries() + " " + application.getPassportNumber();
+    private String buildPassportDisplay(CreditAgreementRenderData renderData) {
+        return "Паспорт " + renderData.passportSeries() + " " + renderData.passportNumber();
     }
 
     private String buildContractHtml(ContractData contractData, List<PaymentScheduleRow> schedule, String paymentType) {
@@ -409,7 +388,7 @@ public class GenerateApplicationContractPdfService {
                     <div class="header">
                         <div class="eyebrow">Потребительский кредит</div>
                         <h1>Кредитный договор</h1>
-                        <p class="lead">Документ сформирован на основе логики расчётов calculator и включает график платежей по выбранному виду платежа.</p>
+                        <p class="lead">Документ сформирован на основе фактических условий выбранного кредитного предложения и содержит график платежей по заявке.</p>
                     </div>
 
                     <div class="hero">
@@ -452,7 +431,7 @@ public class GenerateApplicationContractPdfService {
                         </tr>
                         <tr>
                             <td class="tile">
-                                <div class="tile-label">Платёж</div>
+                                <div class="tile-label">Платеж</div>
                                 <div class="tile-value">%s</div>
                             </td>
                             <td class="tile">
@@ -470,11 +449,11 @@ public class GenerateApplicationContractPdfService {
                                 <div class="tile-value">%s%%</div>
                             </td>
                             <td class="tile">
-                                <div class="tile-label">Первый платёж</div>
+                                <div class="tile-label">Первый платеж</div>
                                 <div class="tile-value">%s</div>
                             </td>
                             <td class="tile">
-                                <div class="tile-label">Последний платёж</div>
+                                <div class="tile-label">Последний платеж</div>
                                 <div class="tile-value">%s</div>
                             </td>
                         </tr>
@@ -484,7 +463,7 @@ public class GenerateApplicationContractPdfService {
                     <div class="section-box">
                         <p>Кредитор предоставляет заемщику денежные средства на условиях возвратности, срочности и платности.</p>
                         <p>Заемщик обязуется вносить платежи согласно графику, указанному ниже, и соблюдать условия обслуживания кредита.</p>
-                        <p>Первый платёж подлежит внесению до <strong>%s</strong>, последний платёж - до <strong>%s</strong>.</p>
+                        <p>Первый платеж подлежит внесению до <strong>%s</strong>, последний платеж - до <strong>%s</strong>.</p>
                     </div>
 
                     <h2>График платежей</h2>
@@ -493,7 +472,7 @@ public class GenerateApplicationContractPdfService {
                             <tr>
                                 <th>Месяц</th>
                                 <th>Дата платежа</th>
-                                <th>Платёж</th>
+                                <th>Платеж</th>
                                 <th>Основной долг</th>
                                 <th>Проценты</th>
                                 <th>Остаток долга</th>
@@ -528,10 +507,14 @@ public class GenerateApplicationContractPdfService {
     }
 
     private void configureFonts(PdfRendererBuilder builder) {
-        PDF_FONT_CANDIDATE_PATHS.stream()
+        String fontPath = PDF_FONT_CANDIDATE_PATHS.stream()
                 .filter(this::fontExists)
                 .findFirst()
-                .ifPresent(path -> builder.useFont(new File(path), PDF_FONT_FAMILY));
+                .orElseThrow(() -> new IllegalStateException(
+                        "No supported PDF font found for credit agreement generation"
+                ));
+
+        builder.useFont(new File(fontPath), PDF_FONT_FAMILY);
     }
 
     private boolean fontExists(String path) {

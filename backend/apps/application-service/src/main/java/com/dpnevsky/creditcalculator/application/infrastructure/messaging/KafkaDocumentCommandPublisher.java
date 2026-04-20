@@ -9,8 +9,6 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Component
@@ -20,7 +18,7 @@ public class KafkaDocumentCommandPublisher implements DocumentCommandPublisher {
 
     private static final String TOPIC = "document-generation-requested";
     private static final String EVENT_TYPE = "DocumentGenerationRequested";
-    private static final Integer EVENT_VERSION = 1;
+    private static final Integer EVENT_VERSION = 2;
     private static final String PRODUCER = "application-service";
 
     private final KafkaTemplate<String, EventEnvelope<DocumentGenerationRequested>> kafkaTemplate;
@@ -32,36 +30,26 @@ public class KafkaDocumentCommandPublisher implements DocumentCommandPublisher {
     }
 
     @Override
-    public void publishDocumentGenerationRequested(UUID applicationId) {
-        OffsetDateTime now = OffsetDateTime.now();
-
-        DocumentGenerationRequested payload = new DocumentGenerationRequested(
-                UUID.randomUUID(),
-                applicationId,
-                "CREDIT_AGREEMENT",
-                List.of("PDF"),
-                "credit-agreement",
-                "v1",
-                "debug-user",
-                now,
-                Map.of(
-                        "applicationId", applicationId.toString()
-                )
-        );
-
+    public void publishDocumentGenerationRequested(DocumentGenerationRequested payload) {
+        OffsetDateTime now = payload.requestedAt();
         EventEnvelope<DocumentGenerationRequested> envelope = new EventEnvelope<>(
                 UUID.randomUUID(),
                 EVENT_TYPE,
                 EVENT_VERSION,
                 now,
                 PRODUCER,
-                applicationId.toString(),
+                payload.applicationId().toString(),
                 null,
                 payload
         );
 
-        kafkaTemplate.send(TOPIC, applicationId.toString(), envelope);
+        kafkaTemplate.send(TOPIC, payload.applicationId().toString(), envelope);
 
-        log.info("Published DocumentGenerationRequested to topic={} for applicationId={}", TOPIC, applicationId);
+        log.info(
+                "Published DocumentGenerationRequested to topic={} for applicationId={}, requestId={}",
+                TOPIC,
+                payload.applicationId(),
+                payload.requestId()
+        );
     }
 }

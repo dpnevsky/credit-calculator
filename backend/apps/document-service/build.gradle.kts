@@ -5,6 +5,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":libs:domain:calculator-engine"))
     implementation(project(":libs:contracts:event-envelope"))
     implementation(project(":libs:contracts:document-events"))
 

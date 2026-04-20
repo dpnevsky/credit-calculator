@@ -1,8 +1,8 @@
 package com.dpnevsky.creditcalculator.application.application.port.out;
 
-import java.util.UUID;
+import com.dpnevsky.creditcalculator.contracts.document.events.DocumentGenerationRequested;
 
 public interface DocumentCommandPublisher {
 
-    void publishDocumentGenerationRequested(UUID applicationId);
+    void publishDocumentGenerationRequested(DocumentGenerationRequested request);
 }

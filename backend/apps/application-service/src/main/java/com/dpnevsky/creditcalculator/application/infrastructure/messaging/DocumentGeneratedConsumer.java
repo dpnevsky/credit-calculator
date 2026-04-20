@@ -1,7 +1,9 @@
 package com.dpnevsky.creditcalculator.application.infrastructure.messaging;
 
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationDocumentEntity;
+import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationDocumentRepository;
+import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationRepository;
 import com.dpnevsky.creditcalculator.contracts.document.events.DocumentGenerated;
 import com.dpnevsky.creditcalculator.contracts.eventenvelope.EventEnvelope;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -20,16 +22,20 @@ import java.util.UUID;
 public class DocumentGeneratedConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentGeneratedConsumer.class);
+    private static final String DOCUMENTS_READY_STATUS = "DOCUMENTS_READY";
 
     private final ObjectMapper objectMapper;
     private final ApplicationDocumentRepository applicationDocumentRepository;
+    private final ApplicationRepository applicationRepository;
 
     public DocumentGeneratedConsumer(
             ObjectMapper objectMapper,
-            ApplicationDocumentRepository applicationDocumentRepository
+            ApplicationDocumentRepository applicationDocumentRepository,
+            ApplicationRepository applicationRepository
     ) {
         this.objectMapper = objectMapper;
         this.applicationDocumentRepository = applicationDocumentRepository;
+        this.applicationRepository = applicationRepository;
     }
 
     @Transactional
@@ -67,6 +73,7 @@ public class DocumentGeneratedConsumer {
         );
 
         applicationDocumentRepository.save(documentEntity);
+        markApplicationDocumentsReady(payload.applicationId());
 
         log.info(
                 "Saved DocumentGenerated applicationId={}, documentId={}, requestId={}",
@@ -85,5 +92,16 @@ public class DocumentGeneratedConsumer {
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Failed to parse DocumentGenerated event", exception);
         }
+    }
+
+    private void markApplicationDocumentsReady(UUID applicationId) {
+        applicationRepository.findById(applicationId)
+                .ifPresent(application -> {
+                    if (!DOCUMENTS_READY_STATUS.equals(application.getStatus())) {
+                        application.setStatus(DOCUMENTS_READY_STATUS);
+                    }
+                    application.setUpdatedAt(OffsetDateTime.now());
+                    applicationRepository.save(application);
+                });
     }
 }

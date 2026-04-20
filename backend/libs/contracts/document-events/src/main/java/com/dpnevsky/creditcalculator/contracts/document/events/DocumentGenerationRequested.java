@@ -31,6 +31,8 @@ public record DocumentGenerationRequested(
         @NotBlank
         String requestedByUserId,
 
+        CreditAgreementRenderData creditAgreementData,
+
         @NotNull
         OffsetDateTime requestedAt,
 

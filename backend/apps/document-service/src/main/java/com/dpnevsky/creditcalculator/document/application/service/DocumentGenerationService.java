@@ -15,11 +15,17 @@ import java.util.UUID;
 public class DocumentGenerationService {
 
     private static final String GENERATED_STATUS = "GENERATED";
+    private static final String CREDIT_AGREEMENT_DOCUMENT_TYPE = "CREDIT_AGREEMENT";
 
     private final DocumentStoragePort documentStoragePort;
+    private final CreditAgreementPdfGenerationService creditAgreementPdfGenerationService;
 
-    public DocumentGenerationService(DocumentStoragePort documentStoragePort) {
+    public DocumentGenerationService(
+            DocumentStoragePort documentStoragePort,
+            CreditAgreementPdfGenerationService creditAgreementPdfGenerationService
+    ) {
         this.documentStoragePort = documentStoragePort;
+        this.creditAgreementPdfGenerationService = creditAgreementPdfGenerationService;
     }
 
     public DocumentGenerated generate(DocumentGenerationRequested request) {
@@ -64,6 +70,19 @@ public class DocumentGenerationService {
     }
 
     private byte[] generatePdfContent(DocumentGenerationRequested request, DocumentGenerated generatedDocument) {
+        if (CREDIT_AGREEMENT_DOCUMENT_TYPE.equals(request.documentType())) {
+            if (request.creditAgreementData() == null) {
+                throw new IllegalStateException(
+                        "Credit agreement render data is required for contract PDF generation"
+                );
+            }
+
+            return creditAgreementPdfGenerationService.generate(
+                    request.creditAgreementData(),
+                    generatedDocument.generatedAt()
+            );
+        }
+
         String html = """
                 <!DOCTYPE html>
                 <html lang="en">
@@ -110,17 +129,7 @@ public class DocumentGenerationService {
                 escapeHtml(generatedDocument.generatedAt().toString()),
                 escapeHtml(generatedDocument.storageKey())
         );
-
-        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            PdfRendererBuilder builder = new PdfRendererBuilder();
-            builder.useFastMode();
-            builder.withHtmlContent(html, null);
-            builder.toStream(outputStream);
-            builder.run();
-            return outputStream.toByteArray();
-        } catch (Exception exception) {
-            throw new IllegalStateException("Failed to generate PDF document", exception);
-        }
+        return renderHtmlToPdf(html);
     }
 
     private byte[] generateXmlContent(DocumentGenerationRequested request, DocumentGenerated generatedDocument) {
@@ -180,6 +189,19 @@ public class DocumentGenerationService {
         );
 
         return content.getBytes(StandardCharsets.UTF_8);
+    }
+
+    private byte[] renderHtmlToPdf(String html) {
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            PdfRendererBuilder builder = new PdfRendererBuilder();
+            builder.useFastMode();
+            builder.withHtmlContent(html, null);
+            builder.toStream(outputStream);
+            builder.run();
+            return outputStream.toByteArray();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Failed to generate PDF document", exception);
+        }
     }
 
     private String resolveFileExtension(String format) {
