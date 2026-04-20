@@ -5,13 +5,13 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8180/realms/credit-calculator
-          jwk-set-uri: http://localhost:8180/realms/credit-calculator/protocol/openid-connect/certs
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/credit-calculator}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/credit-calculator/protocol/openid-connect/certs}
 
   datasource:
-    url: jdbc:postgresql://localhost:5435/document_db
-    username: document_user
-    password: document_pass
+    url: ${DOCUMENT_DB_URL:jdbc:postgresql://localhost:5435/document_db}
+    username: ${DOCUMENT_DB_USERNAME:document_user}
+    password: ${DOCUMENT_DB_PASSWORD:document_pass}
 
   jpa:
     hibernate:
@@ -21,7 +21,7 @@ spring:
     change-log: classpath:/db/changelog/db.changelog-master.yaml
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: document-service
       auto-offset-reset: earliest
@@ -35,3 +35,7 @@ spring:
 
 server:
   port: 8083
+
+document:
+  internal:
+    api-key: ${DOCUMENT_INTERNAL_API_KEY:local-document-internal-api-key}

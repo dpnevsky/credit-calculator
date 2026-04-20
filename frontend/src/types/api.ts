@@ -10,7 +10,6 @@ export interface CreateApplicationRequest {
   firstName: string;
   lastName: string;
   middleName?: string;
-  email: string;
   birthDate: string;
   passportSeries: string;
   passportNumber: string;

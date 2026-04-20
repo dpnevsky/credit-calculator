@@ -6,6 +6,7 @@ import './Application.css';
 import {
   APPLICATION_FORM_DRAFT_KEY,
   SCORING_FORM_DRAFT_KEY,
+  getTodayDate,
   type ApplicationFormState,
   type ScoringFormState,
   applyUserPrefill,
@@ -178,14 +179,23 @@ const CreateApplication: React.FC = () => {
             </div>
             <div className="form-row">
               <div className="form-field">
-                <label htmlFor="email">Email</label>
-                <input type="email" id="email" name="email" value={form.email} onChange={handleApplicationChange} required />
-              </div>
-              <div className="form-field">
                 <label htmlFor="birthDate">Дата рождения</label>
-                <input type="date" id="birthDate" name="birthDate" value={form.birthDate} onChange={handleApplicationChange} required />
+                <input
+                  type="date"
+                  id="birthDate"
+                  name="birthDate"
+                  value={form.birthDate}
+                  onChange={handleApplicationChange}
+                  max={getTodayDate()}
+                  required
+                />
               </div>
             </div>
+            {user?.email && (
+              <p className="hint-text">
+                Владелец заявки определяется по авторизованному профилю: <strong>{user.email}</strong>
+              </p>
+            )}
           </fieldset>
 
           <fieldset>

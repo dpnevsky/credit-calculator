@@ -17,8 +17,7 @@ public class GatewaySecurityConfig {
                 .jwt(jwt -> {})
         );
         http.authorizeExchange(exchanges -> exchanges
-                .pathMatchers("/actuator/**").permitAll()
-                .pathMatchers("/*/actuator/**").permitAll()
+                .pathMatchers("/actuator/health", "/actuator/info").permitAll()
                 .pathMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/logout").permitAll()
                 .pathMatchers("/api/auth/me").authenticated()
                 .anyExchange().authenticated()

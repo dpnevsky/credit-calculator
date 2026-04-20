@@ -21,46 +21,25 @@ spring:
             allowCredentials: false
       routes:
         - id: application-service
-          uri: http://localhost:8081
+          uri: ${APPLICATION_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/applications/**
           filters:
             - AddRequestHeader=X-Forwarded-Prefix, /api
 
         - id: document-download
-          uri: http://localhost:8081
+          uri: ${APPLICATION_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/documents/**
           filters:
             - AddRequestHeader=X-Forwarded-Prefix, /api
 
-        - id: application-service-actuator
-          uri: http://localhost:8081
-          predicates:
-            - Path=/application-service/actuator/**
-          filters:
-            - StripPrefix=1
-
-        - id: scoring-service-actuator
-          uri: http://localhost:8082
-          predicates:
-            - Path=/scoring-service/actuator/**
-          filters:
-            - StripPrefix=1
-
-        - id: document-service-actuator
-          uri: http://localhost:8083
-          predicates:
-            - Path=/document-service/actuator/**
-          filters:
-            - StripPrefix=1
-
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8180/realms/credit-calculator
-          jwk-set-uri: http://localhost:8180/realms/credit-calculator/protocol/openid-connect/certs
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/credit-calculator}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/credit-calculator/protocol/openid-connect/certs}
 
 server:
   port: 8080
@@ -77,13 +56,13 @@ management.endpoint.health:
 
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.security: DEBUG
+    org.springframework.cloud.gateway: INFO
+    org.springframework.security: INFO
 
 auth:
   keycloak:
-    base-url: http://localhost:8180
-    realm: credit-calculator
-    client-id: credit-calculator-app
-    admin-username: admin
-    admin-password: admin
+    base-url: ${KEYCLOAK_BASE_URL:http://localhost:8180}
+    realm: ${KEYCLOAK_REALM:credit-calculator}
+    client-id: ${KEYCLOAK_CLIENT_ID:credit-calculator-app}
+    admin-username: ${AUTH_KEYCLOAK_ADMIN_USERNAME:${KEYCLOAK_ADMIN:admin}}
+    admin-password: ${AUTH_KEYCLOAK_ADMIN_PASSWORD:${KEYCLOAK_ADMIN_PASSWORD:admin}}

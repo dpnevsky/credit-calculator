@@ -17,16 +17,20 @@ import java.util.UUID;
 public class RestDocumentDownloadClient implements DocumentDownloadClient {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String INTERNAL_API_KEY_HEADER = "X-Internal-Api-Key";
 
     private final RestClient restClient;
+    private final String internalApiKey;
 
     public RestDocumentDownloadClient(
             RestClient.Builder restClientBuilder,
-            @Value("${integration.document.base-url}") String documentBaseUrl
+            @Value("${integration.document.base-url}") String documentBaseUrl,
+            @Value("${integration.document.internal-api-key}") String internalApiKey
     ) {
         this.restClient = restClientBuilder
                 .baseUrl(documentBaseUrl)
                 .build();
+        this.internalApiKey = internalApiKey;
     }
 
     @Override
@@ -36,6 +40,7 @@ public class RestDocumentDownloadClient implements DocumentDownloadClient {
         ResponseEntity<byte[]> response = restClient.get()
                 .uri("/internal/documents/{documentId}/download", documentId)
                 .header(AUTHORIZATION_HEADER, BEARER_PREFIX + bearerToken)
+                .header(INTERNAL_API_KEY_HEADER, internalApiKey)
                 .retrieve()
                 .toEntity(byte[].class);
 

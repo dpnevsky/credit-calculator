@@ -75,6 +75,25 @@ class KeycloakAuthServiceTest {
         assertEquals(List.of("APPLICANT"), mergedResponse.roles());
     }
 
+    @Test
+    void doesNotRequireAdminFallbackWhenOnlyOptionalProfileClaimsAreMissing() {
+        KeycloakAuthService service = createService();
+        Jwt jwt = Jwt.withTokenValue("token")
+                .header("alg", "none")
+                .subject("user-123")
+                .claim("email", "applicant@example.com")
+                .claim("given_name", "Ivan")
+                .claim("family_name", "Ivanov")
+                .claim("realm_access", Map.of("roles", List.of("APPLICANT")))
+                .build();
+
+        AuthDtos.CurrentUserResponse response = service.buildCurrentUserFromClaims(jwt);
+
+        assertEquals("", response.middleName());
+        assertEquals("", response.birthDate());
+        assertFalse(service.requiresAdminFallback(response));
+    }
+
     private KeycloakAuthService createService() {
         return new KeycloakAuthService(new KeycloakAuthProperties(
                 "http://localhost:8180",

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { isApplicationSigned, markApplicationAsSigned } from '../utils/applicationStatus';
 import type { ContractPageData } from './applicationDetails.helpers';
@@ -60,8 +60,8 @@ const ContractPage: React.FC = () => {
   const application = state?.application ?? null;
   const documents = state?.documents ?? [];
   const offers = state?.offers ?? [];
-  const selectedOffer = useMemo(() => getSelectedOffer(offers), [offers]);
-  const contractDocument = useMemo(() => getContractDocument(documents), [documents]);
+  const selectedOffer = getSelectedOffer(offers);
+  const contractDocument = getContractDocument(documents);
   const paymentType = application?.paymentType ?? 'ANNUITY';
   const contractTerms = application
     ? resolveContractTerms(application, selectedOffer)

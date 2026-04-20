@@ -10,7 +10,6 @@ export interface ApplicationFormState {
   firstName: string;
   lastName: string;
   middleName: string;
-  email: string;
   birthDate: string;
   passportSeries: string;
   passportNumber: string;
@@ -40,6 +39,8 @@ export const toLocalDateInputValue = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+export const getTodayDate = (): string => toLocalDateInputValue(new Date());
+
 export const getDefaultPassportIssueDate = (): string => {
   const date = new Date();
   date.setDate(date.getDate() - 1);
@@ -52,7 +53,6 @@ export const createInitialApplicationFormState = (): ApplicationFormState => ({
   firstName: '',
   lastName: '',
   middleName: '',
-  email: '',
   birthDate: '',
   passportSeries: '',
   passportNumber: '',
@@ -64,7 +64,6 @@ export const createClearedApplicationFormState = (): ApplicationFormState => ({
   firstName: '',
   lastName: '',
   middleName: '',
-  email: '',
   birthDate: '',
   passportSeries: '',
   passportNumber: '',
@@ -137,7 +136,6 @@ export const applyUserPrefill = (
 
   return {
     ...form,
-    email: form.email || user.email || '',
     firstName: form.firstName || user.firstName || '',
     lastName: form.lastName || user.lastName || '',
     middleName: form.middleName || user.middleName || '',
@@ -171,7 +169,6 @@ export const buildCreateApplicationPayload = (
   firstName: form.firstName.trim(),
   lastName: form.lastName.trim(),
   middleName: form.middleName.trim(),
-  email: form.email.trim(),
   birthDate: form.birthDate,
   passportSeries: form.passportSeries.trim(),
   passportNumber: form.passportNumber.trim(),

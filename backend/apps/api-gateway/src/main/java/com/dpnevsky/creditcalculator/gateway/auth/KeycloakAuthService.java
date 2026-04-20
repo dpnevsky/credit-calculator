@@ -302,9 +302,7 @@ public class KeycloakAuthService {
         return isBlank(response.id())
                 || isBlank(response.email())
                 || isBlank(response.firstName())
-                || isBlank(response.lastName())
-                || isBlank(response.middleName())
-                || isBlank(response.birthDate());
+                || isBlank(response.lastName());
     }
 
     AuthDtos.CurrentUserResponse mergeCurrentUserResponse(

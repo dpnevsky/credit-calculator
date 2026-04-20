@@ -1,0 +1,14 @@
+.idea/
+.vscode/
+.DS_Store
+
+frontend/node_modules/
+frontend/dist/
+frontend/.vite-dev.log
+frontend/.vite-dev.err.log
+
+backend/.gradle/
+backend/.gradle-local/
+backend/.idea/
+backend/build/
+backend/**/build/

@@ -5,19 +5,19 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8180/realms/credit-calculator
-          jwk-set-uri: http://localhost:8180/realms/credit-calculator/protocol/openid-connect/certs
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/credit-calculator}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/credit-calculator/protocol/openid-connect/certs}
   datasource:
-    url: jdbc:postgresql://localhost:5433/application_db
-    username: application_user
-    password: application_pass
+    url: ${APPLICATION_DB_URL:jdbc:postgresql://localhost:5433/application_db}
+    username: ${APPLICATION_DB_USERNAME:application_user}
+    password: ${APPLICATION_DB_PASSWORD:application_pass}
   jpa:
     hibernate:
       ddl-auto: validate
   liquibase:
     change-log: classpath:/db/changelog/db.changelog-master.yaml
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -39,6 +39,7 @@ management.endpoint.health:
 
 integration:
   scoring:
-    base-url: http://localhost:8082
+    base-url: ${SCORING_SERVICE_URL:http://localhost:8082}
   document:
-    base-url: http://localhost:8083
+    base-url: ${DOCUMENT_SERVICE_URL:http://localhost:8083}
+    internal-api-key: ${DOCUMENT_INTERNAL_API_KEY:local-document-internal-api-key}

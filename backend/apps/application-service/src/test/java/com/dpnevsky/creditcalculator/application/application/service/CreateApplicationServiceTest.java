@@ -43,7 +43,6 @@ class CreateApplicationServiceTest {
                 "Ivan",
                 "Ivanov",
                 "Ivanovich",
-                "ivan@example.com",
                 LocalDate.of(1990, 1, 1),
                 "1234",
                 "567890"
