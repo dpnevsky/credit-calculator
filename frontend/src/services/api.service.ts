@@ -3,6 +3,8 @@ import AuthService from './auth.service';
 import type {
   ApplicationResponse,
   ApplicationSubmitData,
+  ContractResponse,
+  ContractStatus,
   CreateApplicationRequest,
   CreateApplicationResponse,
   DocumentResponse,
@@ -70,7 +72,20 @@ interface BackendApplicationResponse {
   createdAt: string;
   updatedAt: string;
   paymentType: ApplicationResponse['paymentType'];
+  contractStatus: string;
+  contractSignedAt: string | null;
+  signatureId: string | null;
   submitData: BackendApplicationSubmitData | null;
+}
+
+interface BackendContractResponse {
+  applicationId: string;
+  contractNumber: string;
+  contractStatus: string;
+  applicationStatus: string;
+  signed: boolean;
+  signedAt: string | null;
+  signatureId: string | null;
 }
 
 interface BackendSubmitApplicationResponse {
@@ -105,6 +120,14 @@ interface BackendRequestDocumentsResponse {
   message: string;
 }
 
+interface BackendErrorResponse {
+  message?: string;
+  validationErrors?: Array<{
+    field?: string;
+    message?: string;
+  }>;
+}
+
 const api = axios.create({
   baseURL: '/api',
   headers: {
@@ -119,6 +142,23 @@ api.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error: unknown) => {
+    if (axios.isAxiosError<BackendErrorResponse>(error)) {
+      const validationMessage = error.response?.data?.validationErrors
+        ?.map((validationError) => validationError.message)
+        .filter((message): message is string => Boolean(message))
+        .join('. ');
+      const responseMessage = error.response?.data?.message;
+
+      throw new Error(validationMessage || responseMessage || error.message);
+    }
+
+    throw error;
+  },
+);
 
 const toBackendSubmitApplicationRequest = (data: SubmitApplicationRequest): BackendSubmitApplicationRequest => ({
   insuranceEnabled: data.insuranceEnabled,
@@ -157,10 +197,36 @@ const mapSubmitData = (data: BackendApplicationSubmitData): ApplicationSubmitDat
   submittedAt: data.submittedAt,
 });
 
+const mapContractStatus = (status: string): ContractStatus => {
+  switch (status) {
+    case 'READY_TO_SIGN':
+      return 'READY_TO_SIGN';
+    case 'SIGNED':
+      return 'SIGNED';
+    case 'EXPIRED':
+      return 'EXPIRED';
+    case 'CANCELLED':
+      return 'CANCELLED';
+    default:
+      return 'NOT_CREATED';
+  }
+};
+
 const mapApplicationResponse = (data: BackendApplicationResponse): ApplicationResponse => ({
   ...data,
   paymentType: data.paymentType === 'DIFFERENTIAL' ? 'DIFFERENTIAL' : 'ANNUITY',
+  contractStatus: mapContractStatus(data.contractStatus),
   submitData: data.submitData ? mapSubmitData(data.submitData) : null,
+});
+
+const mapContractResponse = (data: BackendContractResponse): ContractResponse => ({
+  applicationId: data.applicationId,
+  contractNumber: data.contractNumber,
+  contractStatus: mapContractStatus(data.contractStatus),
+  applicationStatus: data.applicationStatus,
+  signed: data.signed,
+  signedAt: data.signedAt,
+  signatureId: data.signatureId,
 });
 
 const mapSubmitApplicationResponse = (data: BackendSubmitApplicationResponse): SubmitApplicationResponse => ({
@@ -203,6 +269,11 @@ const ApiService = {
   async getApplications(): Promise<ApplicationResponse[]> {
     const response = await api.get<BackendApplicationResponse[]>('/applications');
     return response.data.map(mapApplicationResponse);
+  },
+
+  async getContract(applicationId: string): Promise<ContractResponse> {
+    const response = await api.get<BackendContractResponse>(`/applications/${applicationId}/contract`);
+    return mapContractResponse(response.data);
   },
 
   async submitApplication(applicationId: string, data: SubmitApplicationRequest): Promise<SubmitApplicationResponse> {
@@ -253,6 +324,11 @@ const ApiService = {
   async getDocuments(applicationId: string): Promise<DocumentResponse[]> {
     const response = await api.get<DocumentResponse[]>(`/applications/${applicationId}/documents`);
     return response.data;
+  },
+
+  async signContract(applicationId: string): Promise<ContractResponse> {
+    const response = await api.post<BackendContractResponse>(`/applications/${applicationId}/contract/sign`);
+    return mapContractResponse(response.data);
   },
 
   async downloadDocument(documentId: string): Promise<{ blob: Blob; fileName: string | null }> {

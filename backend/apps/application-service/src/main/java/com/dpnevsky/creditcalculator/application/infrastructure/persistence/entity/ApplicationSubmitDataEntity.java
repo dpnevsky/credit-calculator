@@ -139,6 +139,10 @@ public class ApplicationSubmitDataEntity {
         return accountNumber;
     }
 
+    public void setAccountNumber(String accountNumber) {
+        this.accountNumber = accountNumber;
+    }
+
     public String getEmploymentStatus() {
         return employmentStatus;
     }

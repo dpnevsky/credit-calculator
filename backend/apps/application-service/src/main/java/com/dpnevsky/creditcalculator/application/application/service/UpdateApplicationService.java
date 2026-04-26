@@ -62,7 +62,10 @@ public class UpdateApplicationService {
                 request.passportNumber(),
                 existingApplication.getCreatedAt(),
                 now,
-                existingApplication.getPaymentType()
+                existingApplication.getPaymentType(),
+                existingApplication.getContractStatus(),
+                existingApplication.getContractSignedAt(),
+                existingApplication.getSignatureId()
         );
 
         applicationRepository.save(updatedApplication);

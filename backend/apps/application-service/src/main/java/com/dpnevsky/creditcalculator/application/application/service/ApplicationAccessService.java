@@ -1,5 +1,6 @@
 package com.dpnevsky.creditcalculator.application.application.service;
 
+import com.dpnevsky.creditcalculator.application.application.exception.ApplicationAccessDeniedException;
 import com.dpnevsky.creditcalculator.application.application.exception.ApplicationNotFoundException;
 import com.dpnevsky.creditcalculator.application.application.exception.ApplicationDocumentNotFoundException;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationDocumentEntity;
@@ -27,6 +28,17 @@ public class ApplicationAccessService {
     public ApplicationEntity getOwnedApplication(UUID applicationId, String userEmail) {
         return applicationRepository.findByIdAndEmail(applicationId, userEmail)
                 .orElseThrow(() -> new ApplicationNotFoundException(applicationId));
+    }
+
+    public ApplicationEntity getOwnedApplicationForUpdate(UUID applicationId, String userEmail) {
+        ApplicationEntity application = applicationRepository.findByIdForUpdate(applicationId)
+                .orElseThrow(() -> new ApplicationNotFoundException(applicationId));
+
+        if (!application.getEmail().equalsIgnoreCase(userEmail)) {
+            throw new ApplicationAccessDeniedException(applicationId);
+        }
+
+        return application;
     }
 
     public ApplicationDocumentEntity getOwnedDocument(UUID documentId, String userEmail) {

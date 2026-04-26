@@ -2,6 +2,7 @@ import ApiService from '../services/api.service';
 import type {
   ApplicationResponse,
   ApplicationSubmitData,
+  ContractResponse,
   DocumentResponse,
   OfferResponse,
   PaymentType,
@@ -25,6 +26,7 @@ export type ApplicationDetailsData = {
 
 export type ContractPageData = {
   application: ApplicationResponse;
+  contract: ContractResponse;
   offers: OfferResponse[];
   documents: DocumentResponse[];
 };
@@ -36,6 +38,8 @@ export type ContractTerms = {
 };
 
 export const ACCOUNT_NUMBER_LENGTH = 20;
+const DOCUMENTS_POLL_ATTEMPTS = 5;
+const DOCUMENTS_POLL_DELAY_MS = 600;
 
 export const formatMoney = (value: number): string =>
   new Intl.NumberFormat('ru-RU', {
@@ -52,6 +56,18 @@ export const formatDate = (value: string): string => {
 
   const [, year, month, day] = match;
   return `${day}.${month}.${year}`;
+};
+
+export const formatDateTime = (value: string): string => {
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('ru-RU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(parsedDate);
 };
 
 export const normalizeSalaryAccountNumber = (value: string): string =>
@@ -234,6 +250,11 @@ const loadDocuments = async (applicationId: string): Promise<DocumentResponse[]>
   }
 };
 
+const delay = async (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+
 export const loadApplicationDetailsData = async (
   applicationId: string,
 ): Promise<ApplicationDetailsData> => {
@@ -256,14 +277,16 @@ export const loadApplicationDetailsData = async (
 export const loadContractPageData = async (
   applicationId: string,
 ): Promise<ContractPageData> => {
-  const [application, documents, offers] = await Promise.all([
+  const [application, contract, documents, offers] = await Promise.all([
     ApiService.getApplication(applicationId),
+    ApiService.getContract(applicationId),
     loadDocuments(applicationId),
     ApiService.getOffers(applicationId).catch(() => []),
   ]);
 
   return {
     application,
+    contract,
     documents,
     offers,
   };
@@ -273,5 +296,17 @@ export const refreshDocumentsAfterRequest = async (
   applicationId: string,
 ): Promise<DocumentResponse[]> => {
   await ApiService.requestDocuments(applicationId);
-  return ApiService.getDocuments(applicationId);
+
+  for (let attempt = 0; attempt < DOCUMENTS_POLL_ATTEMPTS; attempt += 1) {
+    const documents = await loadDocuments(applicationId);
+    if (documents.length > 0) {
+      return documents;
+    }
+
+    if (attempt < DOCUMENTS_POLL_ATTEMPTS - 1) {
+      await delay(DOCUMENTS_POLL_DELAY_MS);
+    }
+  }
+
+  return [];
 };

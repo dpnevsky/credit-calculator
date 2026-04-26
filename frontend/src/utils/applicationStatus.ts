@@ -1,8 +1,3 @@
-const SIGNED_APPLICATIONS_STORAGE_KEY = 'cc_signed_applications';
-
-// TODO: This is a temporary frontend-only stub that simulates SIGNED state
-// until the backend exposes contract-signing truth explicitly.
-// Replace this local override with backend-driven status once the flow is implemented.
 const rejectionReasonLabels: Record<string, string> = {
   AGE_OUT_OF_RANGE: 'Возраст не соответствует требованиям банка.',
   UNEMPLOYED: 'Отсутствует подтверждённая занятость.',
@@ -21,35 +16,15 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   OFFER_SELECTED: { label: 'Одобрено', color: '#ca8a04' },
   DOCUMENTS_REQUESTED: { label: 'Одобрено', color: '#ca8a04' },
   DOCUMENTS_READY: { label: 'Одобрено', color: '#ca8a04' },
-  SIGNED: { label: 'Подписано', color: '#16a34a' },
+  CONTRACT_SIGNED: { label: 'Подписано', color: '#16a34a' },
 };
 
-type SignedApplicationsMap = Record<string, string>;
-
-const readSignedApplicationsStub = (): SignedApplicationsMap => {
-  if (typeof window === 'undefined') {
-    return {};
-  }
-
-  const raw = window.localStorage.getItem(SIGNED_APPLICATIONS_STORAGE_KEY);
-  if (!raw) {
-    return {};
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as SignedApplicationsMap;
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
-};
-
-const writeSignedApplicationsStub = (value: SignedApplicationsMap) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.localStorage.setItem(SIGNED_APPLICATIONS_STORAGE_KEY, JSON.stringify(value));
+const contractStatusLabels: Record<string, string> = {
+  NOT_CREATED: 'Не создан',
+  READY_TO_SIGN: 'Готов к подписанию',
+  SIGNED: 'Подписан',
+  EXPIRED: 'Истёк',
+  CANCELLED: 'Отменён',
 };
 
 export const normalizeApplicationStatus = (status: string) => {
@@ -62,36 +37,19 @@ export const normalizeApplicationStatus = (status: string) => {
   return normalizedStatus;
 };
 
-export const isApplicationSigned = (applicationId?: string) => {
-  if (!applicationId) {
-    return false;
-  }
+export const getEffectiveApplicationStatus = (status: string) => normalizeApplicationStatus(status);
 
-  return Boolean(readSignedApplicationsStub()[applicationId]);
-};
+export const getApplicationStatusLabel = (status: string, _applicationId?: string) =>
+  statusConfig[getEffectiveApplicationStatus(status)]?.label ?? normalizeApplicationStatus(status);
 
-export const markApplicationAsSigned = (applicationId: string) => {
-  const signedApplications = readSignedApplicationsStub();
-  signedApplications[applicationId] = new Date().toISOString();
-  writeSignedApplicationsStub(signedApplications);
-};
+export const getApplicationStatusColor = (status: string, _applicationId?: string) =>
+  statusConfig[getEffectiveApplicationStatus(status)]?.color ?? '#6b7280';
 
-export const getEffectiveApplicationStatus = (status: string, applicationId?: string) => {
-  if (applicationId && isApplicationSigned(applicationId)) {
-    return 'SIGNED';
-  }
+export const getContractStatusLabel = (status: string) =>
+  contractStatusLabels[status] ?? status;
 
-  return normalizeApplicationStatus(status);
-};
-
-export const getApplicationStatusLabel = (status: string, applicationId?: string) =>
-  statusConfig[getEffectiveApplicationStatus(status, applicationId)]?.label ?? normalizeApplicationStatus(status);
-
-export const getApplicationStatusColor = (status: string, applicationId?: string) =>
-  statusConfig[getEffectiveApplicationStatus(status, applicationId)]?.color ?? '#6b7280';
-
-export const isRejectedApplicationStatus = (status: string, applicationId?: string) => {
-  const effectiveStatus = getEffectiveApplicationStatus(status, applicationId);
+export const isRejectedApplicationStatus = (status: string, _applicationId?: string) => {
+  const effectiveStatus = getEffectiveApplicationStatus(status);
   return effectiveStatus === 'PRESCORING_REJECTED' || effectiveStatus === 'SCORING_REJECTED';
 };
 

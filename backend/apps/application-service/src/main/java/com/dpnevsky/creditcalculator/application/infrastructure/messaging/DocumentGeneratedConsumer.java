@@ -1,5 +1,7 @@
 package com.dpnevsky.creditcalculator.application.infrastructure.messaging;
 
+import com.dpnevsky.creditcalculator.application.application.model.ApplicationStatus;
+import com.dpnevsky.creditcalculator.application.application.model.ContractStatus;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationDocumentEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationDocumentRepository;
@@ -22,7 +24,6 @@ import java.util.UUID;
 public class DocumentGeneratedConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentGeneratedConsumer.class);
-    private static final String DOCUMENTS_READY_STATUS = "DOCUMENTS_READY";
 
     private final ObjectMapper objectMapper;
     private final ApplicationDocumentRepository applicationDocumentRepository;
@@ -98,11 +99,25 @@ public class DocumentGeneratedConsumer {
     private void markApplicationDocumentsReady(UUID applicationId) {
         applicationRepository.findById(applicationId)
                 .ifPresent(application -> {
-                    if (!DOCUMENTS_READY_STATUS.equals(application.getStatus())) {
-                        application.setStatus(DOCUMENTS_READY_STATUS);
+                    if (ContractStatus.SIGNED.name().equals(application.getContractStatus())) {
+                        return;
                     }
-                    application.setUpdatedAt(OffsetDateTime.now());
-                    applicationRepository.save(application);
+
+                    boolean changed = false;
+
+                    if (!ApplicationStatus.DOCUMENTS_READY.name().equals(application.getStatus())) {
+                        application.setStatus(ApplicationStatus.DOCUMENTS_READY.name());
+                        changed = true;
+                    }
+                    if (!ContractStatus.READY_TO_SIGN.name().equals(application.getContractStatus())) {
+                        application.setContractStatus(ContractStatus.READY_TO_SIGN.name());
+                        changed = true;
+                    }
+
+                    if (changed) {
+                        application.setUpdatedAt(OffsetDateTime.now());
+                        applicationRepository.save(application);
+                    }
                 });
     }
 }

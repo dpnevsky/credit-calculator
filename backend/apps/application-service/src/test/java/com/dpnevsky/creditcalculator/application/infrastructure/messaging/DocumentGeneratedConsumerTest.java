@@ -73,6 +73,7 @@ class DocumentGeneratedConsumerTest {
         verify(applicationRepository).save(argThat(application ->
                 applicationId.equals(application.getId())
                         && "DOCUMENTS_READY".equals(application.getStatus())
+                        && "READY_TO_SIGN".equals(application.getContractStatus())
         ));
     }
 
