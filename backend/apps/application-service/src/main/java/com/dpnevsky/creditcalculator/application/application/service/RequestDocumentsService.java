@@ -1,6 +1,8 @@
 package com.dpnevsky.creditcalculator.application.application.service;
 
 import com.dpnevsky.creditcalculator.application.api.rest.dto.RequestDocumentsResponse;
+import com.dpnevsky.creditcalculator.application.application.model.ApplicationStatus;
+import com.dpnevsky.creditcalculator.application.application.model.ContractStatus;
 import com.dpnevsky.creditcalculator.application.application.port.out.DocumentCommandPublisher;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationDocumentEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
@@ -21,9 +23,6 @@ import java.util.UUID;
 @Service
 public class RequestDocumentsService {
 
-    private static final String OFFER_SELECTED_STATUS = "OFFER_SELECTED";
-    private static final String DOCUMENTS_REQUESTED_STATUS = "DOCUMENTS_REQUESTED";
-    private static final String DOCUMENTS_READY_STATUS = "DOCUMENTS_READY";
     private static final String DEFAULT_PAYMENT_TYPE = "ANNUITY";
     private static final String DOCUMENT_TYPE = "CREDIT_AGREEMENT";
     private static final String DOCUMENT_TEMPLATE_CODE = "credit-agreement";
@@ -59,25 +58,26 @@ public class RequestDocumentsService {
                 .orElse(null);
 
         if (existingDocument != null) {
+            ensureContractReadyState(existingApplication);
             return new RequestDocumentsResponse(
                     applicationId,
-                    DOCUMENTS_READY_STATUS,
+                    ApplicationStatus.DOCUMENTS_READY.name(),
                     "Credit agreement already exists"
             );
         }
 
-        if (DOCUMENTS_REQUESTED_STATUS.equals(existingApplication.getStatus())) {
+        if (ApplicationStatus.DOCUMENTS_REQUESTED.name().equals(existingApplication.getStatus())) {
             return new RequestDocumentsResponse(
                     applicationId,
-                    DOCUMENTS_REQUESTED_STATUS,
+                    ApplicationStatus.DOCUMENTS_REQUESTED.name(),
                     "Document generation is already in progress"
             );
         }
 
-        if (DOCUMENTS_READY_STATUS.equals(existingApplication.getStatus())) {
+        if (ApplicationStatus.DOCUMENTS_READY.name().equals(existingApplication.getStatus())) {
             return new RequestDocumentsResponse(
                     applicationId,
-                    DOCUMENTS_READY_STATUS,
+                    ApplicationStatus.DOCUMENTS_READY.name(),
                     "Credit agreement is already being finalized"
             );
         }
@@ -89,7 +89,7 @@ public class RequestDocumentsService {
         applicationRepository.save(buildRequestedDocumentsApplication(
                 existingApplication,
                 resolvedPaymentType,
-                DOCUMENTS_REQUESTED_STATUS,
+                ApplicationStatus.DOCUMENTS_REQUESTED.name(),
                 now
         ));
         documentCommandPublisher.publishDocumentGenerationRequested(
@@ -98,15 +98,15 @@ public class RequestDocumentsService {
 
         return new RequestDocumentsResponse(
                 applicationId,
-                DOCUMENTS_REQUESTED_STATUS,
+                ApplicationStatus.DOCUMENTS_REQUESTED.name(),
                 "Document generation has been requested"
         );
     }
 
     private void ensureDocumentsRequestAllowed(String currentStatus) {
-        if (!OFFER_SELECTED_STATUS.equals(currentStatus)
-                && !DOCUMENTS_REQUESTED_STATUS.equals(currentStatus)
-                && !DOCUMENTS_READY_STATUS.equals(currentStatus)) {
+        if (!ApplicationStatus.OFFER_SELECTED.name().equals(currentStatus)
+                && !ApplicationStatus.DOCUMENTS_REQUESTED.name().equals(currentStatus)
+                && !ApplicationStatus.DOCUMENTS_READY.name().equals(currentStatus)) {
             throw new IllegalStateException(
                     "Documents can be requested only for applications with status OFFER_SELECTED, DOCUMENTS_REQUESTED or DOCUMENTS_READY"
             );
@@ -133,7 +133,10 @@ public class RequestDocumentsService {
                 existingApplication.getPassportNumber(),
                 existingApplication.getCreatedAt(),
                 updatedAt,
-                resolvedPaymentType
+                resolvedPaymentType,
+                existingApplication.getContractStatus(),
+                existingApplication.getContractSignedAt(),
+                existingApplication.getSignatureId()
         );
     }
 
@@ -187,5 +190,21 @@ public class RequestDocumentsService {
             return requestedPaymentType;
         }
         return DEFAULT_PAYMENT_TYPE;
+    }
+
+    private void ensureContractReadyState(ApplicationEntity application) {
+        if (ContractStatus.SIGNED.name().equals(application.getContractStatus())) {
+            return;
+        }
+
+        if (ContractStatus.READY_TO_SIGN.name().equals(application.getContractStatus())
+                && ApplicationStatus.DOCUMENTS_READY.name().equals(application.getStatus())) {
+            return;
+        }
+
+        application.setContractStatus(ContractStatus.READY_TO_SIGN.name());
+        application.setStatus(ApplicationStatus.DOCUMENTS_READY.name());
+        application.setUpdatedAt(OffsetDateTime.now());
+        applicationRepository.save(application);
     }
 }

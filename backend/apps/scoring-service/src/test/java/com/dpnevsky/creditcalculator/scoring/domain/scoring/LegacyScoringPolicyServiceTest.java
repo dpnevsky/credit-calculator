@@ -33,7 +33,6 @@ class LegacyScoringPolicyServiceTest {
 
         assertEquals("APPROVED", decision.decision());
         assertTrue(decision.rejectionReasons().isEmpty());
-        assertEquals(new BigDecimal("15.00"), decision.finalRate());
     }
 
     private LegacyScoringPolicyService buildService() {

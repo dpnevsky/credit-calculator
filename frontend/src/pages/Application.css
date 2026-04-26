@@ -114,6 +114,13 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
+.field-error {
+  display: block;
+  margin-top: 6px;
+  color: #dc3545;
+  font-size: 0.85rem;
+}
+
 .checkbox-row {
   display: flex;
   gap: 24px;

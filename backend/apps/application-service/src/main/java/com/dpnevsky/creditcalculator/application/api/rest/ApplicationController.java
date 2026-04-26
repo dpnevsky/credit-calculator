@@ -2,6 +2,7 @@ package com.dpnevsky.creditcalculator.application.api.rest;
 
 import com.dpnevsky.creditcalculator.application.api.rest.dto.CreateApplicationRequest;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.CreateApplicationResponse;
+import com.dpnevsky.creditcalculator.application.api.rest.dto.ContractResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationDocumentResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationResponse;
 import com.dpnevsky.creditcalculator.application.api.rest.dto.GetApplicationScoringResultResponse;
@@ -19,10 +20,12 @@ import com.dpnevsky.creditcalculator.application.application.service.DownloadApp
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationDocumentsService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationScoringResultService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationsService;
+import com.dpnevsky.creditcalculator.application.application.service.GetContractService;
 import com.dpnevsky.creditcalculator.application.application.service.GetApplicationService;
 import com.dpnevsky.creditcalculator.application.application.service.GetOffersService;
 import com.dpnevsky.creditcalculator.application.application.service.RequestDocumentsService;
 import com.dpnevsky.creditcalculator.application.application.service.SelectOfferService;
+import com.dpnevsky.creditcalculator.application.application.service.SignContractService;
 import com.dpnevsky.creditcalculator.application.application.service.SubmitApplicationService;
 import com.dpnevsky.creditcalculator.application.application.service.UpdateApplicationService;
 import jakarta.validation.Valid;
@@ -50,6 +53,8 @@ public class ApplicationController {
     private final GetApplicationsService getApplicationsService;
     private final UpdateApplicationService updateApplicationService;
     private final SubmitApplicationService submitApplicationService;
+    private final GetContractService getContractService;
+    private final SignContractService signContractService;
     private final GetApplicationScoringResultService getApplicationScoringResultService;
     private final RequestDocumentsService requestDocumentsService;
     private final GetApplicationDocumentsService getApplicationDocumentsService;
@@ -63,6 +68,8 @@ public class ApplicationController {
             GetApplicationsService getApplicationsService,
             UpdateApplicationService updateApplicationService,
             SubmitApplicationService submitApplicationService,
+            GetContractService getContractService,
+            SignContractService signContractService,
             GetApplicationScoringResultService getApplicationScoringResultService,
             RequestDocumentsService requestDocumentsService,
             GetApplicationDocumentsService getApplicationDocumentsService,
@@ -75,6 +82,8 @@ public class ApplicationController {
         this.getApplicationsService = getApplicationsService;
         this.updateApplicationService = updateApplicationService;
         this.submitApplicationService = submitApplicationService;
+        this.getContractService = getContractService;
+        this.signContractService = signContractService;
         this.getApplicationScoringResultService = getApplicationScoringResultService;
         this.requestDocumentsService = requestDocumentsService;
         this.getApplicationDocumentsService = getApplicationDocumentsService;
@@ -134,6 +143,22 @@ public class ApplicationController {
         return getApplicationScoringResultService.getLatestByApplicationId(applicationId, extractUserEmail(jwt));
     }
 
+    @GetMapping("/api/applications/{applicationId}/contract")
+    public ContractResponse getContract(
+            @PathVariable UUID applicationId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return getContractService.getByApplicationId(applicationId, extractUserEmail(jwt));
+    }
+
+    @PostMapping("/api/applications/{applicationId}/contract/sign")
+    public ContractResponse signContract(
+            @PathVariable UUID applicationId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return signContractService.sign(applicationId, extractUserEmail(jwt));
+    }
+
     @PostMapping("/api/applications/{applicationId}/request-documents")
     public RequestDocumentsResponse requestDocuments(
             @PathVariable UUID applicationId,
@@ -185,7 +210,7 @@ public class ApplicationController {
                 applicationId,
                 extractUserEmail(jwt),
                 offerId,
-                request == null ? null : request.paymentType()
+                request
         );
     }
 

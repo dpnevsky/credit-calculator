@@ -17,6 +17,9 @@ import {
   createClearedScoringFormState,
   createInitialApplicationFormState,
   createInitialScoringFormState,
+  formatPassportIssueBranch,
+  isPassportIssueBranchValid,
+  PASSPORT_ISSUE_BRANCH_ERROR,
   readDraft,
   saveDraft,
 } from './createApplication.helpers';
@@ -26,10 +29,16 @@ const CreateApplication: React.FC = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [form, setForm] = useState<ApplicationFormState>(createInitialApplicationFormState);
   const [scoringForm, setScoringForm] = useState<ScoringFormState>(createInitialScoringFormState);
 
   const isEmployerInnRequired = scoringForm.employmentStatus !== 'UNEMPLOYED';
+  const passportIssueBranchError =
+    (submitAttempted || scoringForm.passportIssueBranch.length > 0)
+      && !isPassportIssueBranchValid(scoringForm.passportIssueBranch)
+      ? PASSPORT_ISSUE_BRANCH_ERROR
+      : null;
 
   useEffect(() => {
     const applicationDraft = readDraft<ApplicationFormState>(
@@ -83,30 +92,34 @@ const CreateApplication: React.FC = () => {
       [name]:
         target instanceof HTMLInputElement && target.type === 'checkbox'
           ? target.checked
+          : name === 'passportIssueBranch'
+            ? formatPassportIssueBranch(target.value)
           : target.value,
     }));
   };
 
   const handleClear = () => {
     setError(null);
+    setSubmitAttempted(false);
     setForm(applyUserPrefill(createClearedApplicationFormState(), user));
     setScoringForm(createClearedScoringFormState());
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setSubmitAttempted(true);
     setLoading(true);
     setError(null);
 
     try {
-      const createdApplication = await ApiService.createApplication(
-        buildCreateApplicationPayload(form),
-      );
+      const createApplicationPayload = buildCreateApplicationPayload(form);
+      const submitApplicationPayload = buildSubmitApplicationPayload(scoringForm);
+      const createdApplication = await ApiService.createApplication(createApplicationPayload);
 
       if (createdApplication.status !== 'PRESCORING_REJECTED') {
         await ApiService.submitApplication(
           createdApplication.applicationId,
-          buildSubmitApplicationPayload(scoringForm),
+          submitApplicationPayload,
         );
       }
 
@@ -191,11 +204,6 @@ const CreateApplication: React.FC = () => {
                 />
               </div>
             </div>
-            {user?.email && (
-              <p className="hint-text">
-                Владелец заявки определяется по авторизованному профилю: <strong>{user.email}</strong>
-              </p>
-            )}
           </fieldset>
 
           <fieldset>
@@ -282,8 +290,15 @@ const CreateApplication: React.FC = () => {
                   name="passportIssueBranch"
                   value={scoringForm.passportIssueBranch}
                   onChange={handleScoringChange}
+                  placeholder="000-000"
+                  maxLength={7}
+                  inputMode="numeric"
+                  pattern="\d{3}-\d{3}"
                   required
                 />
+                {passportIssueBranchError && (
+                  <span className="field-error">{passportIssueBranchError}</span>
+                )}
               </div>
             </div>
             <div className="form-row">
@@ -322,6 +337,7 @@ const CreateApplication: React.FC = () => {
                   value={scoringForm.employerInn}
                   onChange={handleScoringChange}
                   maxLength={12}
+                  pattern="\d{10}|\d{12}"
                   required={isEmployerInnRequired}
                   disabled={!isEmployerInnRequired}
                 />
@@ -372,7 +388,7 @@ const CreateApplication: React.FC = () => {
             <button type="button" className="btn btn-secondary" onClick={handleClear} disabled={loading}>
               Очистить
             </button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
+            <button type="submit" className="btn btn-primary" disabled={loading || Boolean(passportIssueBranchError)}>
               {loading ? 'Отправка...' : 'Создать заявку'}
             </button>
           </div>

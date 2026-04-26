@@ -100,38 +100,6 @@ class RequestDocumentsServiceTest {
         verify(offerRepository, never()).findFirstByApplicationIdAndSelectedTrue(any());
     }
 
-    @Test
-    void keepsReadyStatusWhenAgreementAlreadyExists() {
-        ApplicationAccessService applicationAccessService = mock(ApplicationAccessService.class);
-        ApplicationDocumentRepository applicationDocumentRepository = mock(ApplicationDocumentRepository.class);
-        ApplicationRepository applicationRepository = mock(ApplicationRepository.class);
-        OfferRepository offerRepository = mock(OfferRepository.class);
-        DocumentCommandPublisher documentCommandPublisher = mock(DocumentCommandPublisher.class);
-        RequestDocumentsService service = new RequestDocumentsService(
-                applicationAccessService,
-                applicationDocumentRepository,
-                applicationRepository,
-                offerRepository,
-                documentCommandPublisher
-        );
-        UUID applicationId = UUID.randomUUID();
-
-        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
-                .thenReturn(buildApplication(applicationId, "DOCUMENTS_READY", "ANNUITY"));
-        when(applicationDocumentRepository.findFirstByApplicationIdAndDocumentTypeOrderByGeneratedAtDesc(
-                applicationId,
-                "CREDIT_AGREEMENT"
-        )).thenReturn(Optional.of(buildDocument(applicationId)));
-
-        var response = service.requestDocuments(applicationId, "owner@example.com", "DIFFERENTIAL");
-
-        assertEquals("DOCUMENTS_READY", response.status());
-        assertEquals("Credit agreement already exists", response.message());
-        verify(applicationRepository, never()).save(any());
-        verify(documentCommandPublisher, never()).publishDocumentGenerationRequested(any());
-        verify(offerRepository, never()).findFirstByApplicationIdAndSelectedTrue(any());
-    }
-
     private ApplicationEntity buildApplication(UUID applicationId, String status, String paymentType) {
         OffsetDateTime now = OffsetDateTime.of(2026, 4, 17, 12, 0, 0, 0, ZoneOffset.UTC);
         return new ApplicationEntity(

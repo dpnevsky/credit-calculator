@@ -1,5 +1,6 @@
 package com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity;
 
+import com.dpnevsky.creditcalculator.application.application.model.ContractStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -57,6 +58,15 @@ public class ApplicationEntity {
     @Column(name = "payment_type", nullable = false, length = 32)
     private String paymentType;
 
+    @Column(name = "contract_status", nullable = false, length = 32)
+    private String contractStatus;
+
+    @Column(name = "contract_signed_at")
+    private OffsetDateTime contractSignedAt;
+
+    @Column(name = "signature_id", unique = true)
+    private UUID signatureId;
+
     protected ApplicationEntity() {
         // for JPA
     }
@@ -77,6 +87,46 @@ public class ApplicationEntity {
             OffsetDateTime updatedAt,
             String paymentType
     ) {
+        this(
+                id,
+                status,
+                amount,
+                termMonths,
+                firstName,
+                lastName,
+                middleName,
+                email,
+                birthDate,
+                passportSeries,
+                passportNumber,
+                createdAt,
+                updatedAt,
+                paymentType,
+                ContractStatus.NOT_CREATED.name(),
+                null,
+                null
+        );
+    }
+
+    public ApplicationEntity(
+            UUID id,
+            String status,
+            BigDecimal amount,
+            Integer termMonths,
+            String firstName,
+            String lastName,
+            String middleName,
+            String email,
+            LocalDate birthDate,
+            String passportSeries,
+            String passportNumber,
+            OffsetDateTime createdAt,
+            OffsetDateTime updatedAt,
+            String paymentType,
+            String contractStatus,
+            OffsetDateTime contractSignedAt,
+            UUID signatureId
+    ) {
         this.id = id;
         this.status = status;
         this.amount = amount;
@@ -91,6 +141,9 @@ public class ApplicationEntity {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.paymentType = paymentType;
+        this.contractStatus = contractStatus;
+        this.contractSignedAt = contractSignedAt;
+        this.signatureId = signatureId;
     }
 
     public UUID getId() {
@@ -149,6 +202,18 @@ public class ApplicationEntity {
         return paymentType;
     }
 
+    public String getContractStatus() {
+        return contractStatus;
+    }
+
+    public OffsetDateTime getContractSignedAt() {
+        return contractSignedAt;
+    }
+
+    public UUID getSignatureId() {
+        return signatureId;
+    }
+
     public void setStatus(String status) {
         this.status = status;
     }
@@ -159,5 +224,17 @@ public class ApplicationEntity {
 
     public void setPaymentType(String paymentType) {
         this.paymentType = paymentType;
+    }
+
+    public void setContractStatus(String contractStatus) {
+        this.contractStatus = contractStatus;
+    }
+
+    public void setContractSignedAt(OffsetDateTime contractSignedAt) {
+        this.contractSignedAt = contractSignedAt;
+    }
+
+    public void setSignatureId(UUID signatureId) {
+        this.signatureId = signatureId;
     }
 }

@@ -3,6 +3,7 @@ export type MaritalStatus = 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED';
 export type EmploymentStatus = 'EMPLOYED' | 'UNEMPLOYED' | 'SELF_EMPLOYED' | 'RETIRED' | 'BUSINESS_OWNER' | 'STUDENT';
 export type Position = 'MID_MANAGER' | 'TOP_MANAGER' | 'JUNIOR_MANAGER' | 'DEVELOPER' | 'SALES' | 'ACCOUNTANT' | 'HR' | 'OTHER';
 export type PaymentType = 'ANNUITY' | 'DIFFERENTIAL';
+export type ContractStatus = 'NOT_CREATED' | 'READY_TO_SIGN' | 'SIGNED' | 'EXPIRED' | 'CANCELLED';
 
 export interface CreateApplicationRequest {
   amount: number;
@@ -85,7 +86,20 @@ export interface ApplicationResponse {
   createdAt: string;
   updatedAt: string;
   paymentType: PaymentType;
+  contractStatus: ContractStatus;
+  contractSignedAt: string | null;
+  signatureId: string | null;
   submitData: ApplicationSubmitData | null;
+}
+
+export interface ContractResponse {
+  applicationId: string;
+  contractNumber: string;
+  contractStatus: ContractStatus;
+  applicationStatus: string;
+  signed: boolean;
+  signedAt: string | null;
+  signatureId: string | null;
 }
 
 export interface SubmitApplicationResponse {
@@ -137,6 +151,7 @@ export interface SelectOfferResponse {
 
 export interface SelectOfferRequest {
   paymentType?: PaymentType;
+  accountNumber?: string;
 }
 
 export interface DocumentResponse {

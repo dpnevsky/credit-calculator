@@ -20,6 +20,7 @@ import {
   downloadApplicationDocumentFile,
   formatBoolean,
   formatDate,
+  formatDateTime,
   formatMoney,
   getContractDocument,
   getEmploymentStatusLabel,
@@ -179,7 +180,10 @@ const ApplicationDetails: React.FC = () => {
     setError(null);
 
     try {
-      await ApiService.selectOffer(applicationId, offerId, { paymentType });
+      await ApiService.selectOffer(applicationId, offerId, {
+        paymentType,
+        accountNumber: selected.salaryClient ? normalizedSalaryAccountNumber : undefined,
+      });
       await loadData();
     } catch (selectError) {
       if (selectError instanceof Error) {
@@ -597,13 +601,27 @@ const ApplicationDetails: React.FC = () => {
               Скачать договор
             </button>
           </div>
+          {application.contractStatus === 'SIGNED' && (
+            <>
+              {application.contractSignedAt && (
+                <p className="hint-text">
+                  Договор подписан: {formatDateTime(application.contractSignedAt)}
+                </p>
+              )}
+              {application.signatureId && (
+                <p className="hint-text">
+                  Signature ID: {application.signatureId}
+                </p>
+              )}
+            </>
+          )}
         </div>
       )}
 
       {!contractDocument && canRequestDocuments && (
         <div className="card">
           <h3>Документы</h3>
-          <p className="hint-text">Документы ещё не готовы или требуют повторного запроса.</p>
+          <p className="hint-text">Запросить документы для дальнейшего оформления договора</p>
           <div className="contract-actions">
             <button
               type="button"

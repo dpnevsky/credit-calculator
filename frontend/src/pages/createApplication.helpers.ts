@@ -3,6 +3,8 @@ import type { CreateApplicationRequest, SubmitApplicationRequest } from '../type
 
 export const APPLICATION_FORM_DRAFT_KEY = 'cc_create_application_form_draft';
 export const SCORING_FORM_DRAFT_KEY = 'cc_create_application_scoring_draft';
+export const PASSPORT_ISSUE_BRANCH_ERROR = 'Код подразделения должен быть в формате 000-000';
+export const PASSPORT_ISSUE_BRANCH_PATTERN = /^\d{3}-\d{3}$/;
 
 export interface ApplicationFormState {
   amount: string;
@@ -46,6 +48,19 @@ export const getDefaultPassportIssueDate = (): string => {
   date.setDate(date.getDate() - 1);
   return toLocalDateInputValue(date);
 };
+
+export const formatPassportIssueBranch = (value: string): string => {
+  const digits = value.replace(/\D/g, '').slice(0, 6);
+  if (digits.length <= 3) {
+    return digits;
+  }
+
+  return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+};
+
+export const isPassportIssueBranchValid = (value: string): boolean => (
+  PASSPORT_ISSUE_BRANCH_PATTERN.test(value)
+);
 
 export const createInitialApplicationFormState = (): ApplicationFormState => ({
   amount: '500000',
@@ -176,19 +191,32 @@ export const buildCreateApplicationPayload = (
 
 export const buildSubmitApplicationPayload = (
   form: ScoringFormState,
-): SubmitApplicationRequest => ({
-  gender: form.gender,
-  passportIssueDate: form.passportIssueDate,
-  passportIssueBranch: form.passportIssueBranch.trim(),
-  maritalStatus: form.maritalStatus,
-  dependentAmount: toOptionalNumber(form.dependentAmount, 0),
-  employmentStatus: form.employmentStatus,
-  employerInn: form.employerInn.trim(),
-  salary: parseRequiredNumber(form.salary, 'Зарплата'),
-  position: form.position,
-  workExperienceTotal: parseRequiredNumber(form.workExperienceTotal, 'Общий стаж'),
-  workExperienceCurrent: parseRequiredNumber(form.workExperienceCurrent, 'Текущий стаж'),
-  accountNumber: form.accountNumber.trim(),
-  insuranceEnabled: false,
-  salaryClient: false,
-});
+): SubmitApplicationRequest => {
+  const employerInn = form.employerInn.trim();
+  const passportIssueBranch = form.passportIssueBranch.trim();
+
+  if (!isPassportIssueBranchValid(passportIssueBranch)) {
+    throw new Error(PASSPORT_ISSUE_BRANCH_ERROR);
+  }
+
+  if (form.employmentStatus !== 'UNEMPLOYED' && !/^(\d{10}|\d{12})$/.test(employerInn)) {
+    throw new Error('ИНН работодателя должен содержать 10 или 12 цифр');
+  }
+
+  return {
+    gender: form.gender,
+    passportIssueDate: form.passportIssueDate,
+    passportIssueBranch,
+    maritalStatus: form.maritalStatus,
+    dependentAmount: toOptionalNumber(form.dependentAmount, 0),
+    employmentStatus: form.employmentStatus,
+    employerInn,
+    salary: parseRequiredNumber(form.salary, 'Зарплата'),
+    position: form.position,
+    workExperienceTotal: parseRequiredNumber(form.workExperienceTotal, 'Общий стаж'),
+    workExperienceCurrent: parseRequiredNumber(form.workExperienceCurrent, 'Текущий стаж'),
+    accountNumber: form.accountNumber.trim(),
+    insuranceEnabled: false,
+    salaryClient: false,
+  };
+};

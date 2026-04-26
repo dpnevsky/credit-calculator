@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { isApplicationSigned, markApplicationAsSigned } from '../utils/applicationStatus';
+import ApiService from '../services/api.service';
+import { getApplicationStatusLabel, getContractStatusLabel } from '../utils/applicationStatus';
 import type { ContractPageData } from './applicationDetails.helpers';
 import {
   downloadApplicationDocumentFile,
+  formatDateTime,
   formatMoney,
   getContractDocument,
   getPaymentTypeLabel,
@@ -23,41 +26,34 @@ const ContractPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [isSigned, setIsSigned] = useState(() => isApplicationSigned(applicationId));
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    setIsSigned(isApplicationSigned(applicationId));
+  const loadData = useCallback(async () => {
+    if (!applicationId) {
+      setError('Заявка не найдена');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await loadContractPageData(applicationId);
+      setState(data);
+    } catch (loadError) {
+      setError(extractErrorMessage(loadError, 'Не удалось загрузить договор'));
+    } finally {
+      setLoading(false);
+    }
   }, [applicationId]);
 
   useEffect(() => {
-    const loadData = async () => {
-      if (!applicationId) {
-        setError('Заявка не найдена');
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const data = await loadContractPageData(applicationId);
-        setState(data);
-      } catch (loadError) {
-        if (loadError instanceof Error) {
-          setError(loadError.message);
-        } else {
-          setError('Не удалось загрузить договор');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
     void loadData();
-  }, [applicationId]);
+  }, [loadData]);
 
   const application = state?.application ?? null;
+  const contract = state?.contract ?? null;
   const documents = state?.documents ?? [];
   const offers = state?.offers ?? [];
   const selectedOffer = getSelectedOffer(offers);
@@ -66,6 +62,9 @@ const ContractPage: React.FC = () => {
   const contractTerms = application
     ? resolveContractTerms(application, selectedOffer)
     : null;
+  const isSigned = contract?.signed ?? false;
+  const canSign = contract?.contractStatus === 'READY_TO_SIGN';
+  const signDisabledMessage = getSignDisabledMessage(contract?.contractStatus ?? null);
 
   const handleDownloadContract = async () => {
     if (!contractDocument) {
@@ -78,25 +77,31 @@ const ContractPage: React.FC = () => {
     try {
       await downloadApplicationDocumentFile(contractDocument);
     } catch (downloadError) {
-      if (downloadError instanceof Error) {
-        setError(downloadError.message);
-      } else {
-        setError('Не удалось скачать договор');
-      }
+      setError(extractErrorMessage(downloadError, 'Не удалось скачать договор'));
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleSignContract = () => {
+  const handleSignContract = async () => {
     if (!applicationId) {
       return;
     }
 
-    // TODO: This is a temporary frontend-only contract signing stub.
-    // Replace it with backend-driven signing truth once the real signing flow exists.
-    markApplicationAsSigned(applicationId);
-    setIsSigned(true);
+    setActionLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      await ApiService.signContract(applicationId);
+      const data = await loadContractPageData(applicationId);
+      setState(data);
+      setSuccessMessage('Договор успешно подписан.');
+    } catch (signError) {
+      setError(extractErrorMessage(signError, 'Не удалось подписать договор'));
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   if (loading) {
@@ -110,7 +115,7 @@ const ContractPage: React.FC = () => {
     );
   }
 
-  if (error || !application || !contractTerms) {
+  if (error || !application || !contract || !contractTerms) {
     return (
       <div className="page-container">
         <div className="card error-card">
@@ -129,9 +134,7 @@ const ContractPage: React.FC = () => {
       <div className="detail-header">
         <div>
           <h2>Договор по заявке #{application.applicationId.slice(0, 8)}</h2>
-          <p className="hint-text">
-            Подписание пока работает как временный интерфейсный шаг без реальной отправки в backend.
-          </p>
+          <p className="hint-text">Номер договора: {contract.contractNumber}</p>
         </div>
         <div className="header-actions">
           <button
@@ -151,6 +154,12 @@ const ContractPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {successMessage && (
+        <div className="card card-success">
+          <p>{successMessage}</p>
+        </div>
+      )}
 
       <div className="card">
         <h3>Основные условия</h3>
@@ -182,9 +191,27 @@ const ContractPage: React.FC = () => {
           <div className="info-item">
             <span className="info-label">Статус договора</span>
             <span className={`info-value ${isSigned ? 'text-success' : ''}`}>
-              {isSigned ? 'Подписано' : 'Ожидает подписи'}
+              {getContractStatusLabel(contract.contractStatus)}
             </span>
           </div>
+          <div className="info-item">
+            <span className="info-label">Статус заявки</span>
+            <span className="info-value">
+              {getApplicationStatusLabel(contract.applicationStatus)}
+            </span>
+          </div>
+          {contract.signedAt && (
+            <div className="info-item">
+              <span className="info-label">Подписан</span>
+              <span className="info-value text-success">{formatDateTime(contract.signedAt)}</span>
+            </div>
+          )}
+          {contract.signatureId && (
+            <div className="info-item">
+              <span className="info-label">Signature ID</span>
+              <span className="info-value">{contract.signatureId}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -196,8 +223,8 @@ const ContractPage: React.FC = () => {
             условиям и графику платежей, сформированным банком.
           </p>
           <p>
-            После нажатия на кнопку подписи интерфейс пометит договор как подписанный. Реальная
-            интеграция электронной подписи пока не подключена.
+            После подписания backend сохраняет signed-статус договора, дату подписания и
+            уникальный идентификатор подписи.
           </p>
           <p>Полную версию договора можно скачать в формате PDF.</p>
           {!selectedOffer && (
@@ -212,13 +239,50 @@ const ContractPage: React.FC = () => {
           )}
         </div>
         <div className="contract-actions">
-          <button className="btn btn-primary" onClick={handleSignContract} disabled={isSigned}>
-            {isSigned ? 'Договор подписан' : 'Подписать'}
+          <button
+            className="btn btn-primary"
+            onClick={() => void handleSignContract()}
+            disabled={!canSign || actionLoading}
+          >
+            {actionLoading ? 'Подписание...' : isSigned ? 'Подписано' : 'Подписать'}
           </button>
         </div>
+        {!canSign && signDisabledMessage && (
+          <p className="hint-text">{signDisabledMessage}</p>
+        )}
       </div>
     </div>
   );
+};
+
+const extractErrorMessage = (error: unknown, fallback: string): string => {
+  if (axios.isAxiosError(error)) {
+    const responseMessage = error.response?.data?.message;
+    if (typeof responseMessage === 'string' && responseMessage.length > 0) {
+      return responseMessage;
+    }
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
+const getSignDisabledMessage = (contractStatus: string | null): string | null => {
+  switch (contractStatus) {
+    case 'SIGNED':
+      return 'Договор уже подписан.';
+    case 'NOT_CREATED':
+      return 'Договор ещё не сформирован. Сначала запросите документы на странице заявки.';
+    case 'EXPIRED':
+      return 'Срок подписания договора истёк.';
+    case 'CANCELLED':
+      return 'Подписание договора недоступно.';
+    default:
+      return null;
+  }
 };
 
 export default ContractPage;

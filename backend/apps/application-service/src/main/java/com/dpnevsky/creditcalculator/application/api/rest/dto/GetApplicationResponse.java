@@ -20,6 +20,9 @@ public record GetApplicationResponse(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         String paymentType,
+        String contractStatus,
+        OffsetDateTime contractSignedAt,
+        UUID signatureId,
         SubmitData submitData
 ) {
     public record SubmitData(

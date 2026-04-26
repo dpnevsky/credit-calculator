@@ -43,6 +43,9 @@ public class GetApplicationService {
                 applicationEntity.getCreatedAt(),
                 applicationEntity.getUpdatedAt(),
                 applicationEntity.getPaymentType(),
+                applicationEntity.getContractStatus(),
+                applicationEntity.getContractSignedAt(),
+                applicationEntity.getSignatureId(),
                 submitData
         );
     }

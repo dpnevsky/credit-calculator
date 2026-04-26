@@ -159,7 +159,10 @@ public class SubmitApplicationService {
                 existingApplication.getPassportNumber(),
                 existingApplication.getCreatedAt(),
                 now,
-                existingApplication.getPaymentType()
+                existingApplication.getPaymentType(),
+                existingApplication.getContractStatus(),
+                existingApplication.getContractSignedAt(),
+                existingApplication.getSignatureId()
         );
         applicationRepository.save(updatedApplication);
 

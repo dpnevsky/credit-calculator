@@ -1,0 +1,37 @@
+databaseChangeLog:
+  - changeSet:
+      id: 009-add-contract-signing-to-applications
+      author: codex
+      changes:
+        - addColumn:
+            tableName: applications
+            columns:
+              - column:
+                  name: contract_status
+                  type: VARCHAR(32)
+                  defaultValue: NOT_CREATED
+                  constraints:
+                    nullable: false
+              - column:
+                  name: contract_signed_at
+                  type: TIMESTAMP WITH TIME ZONE
+              - column:
+                  name: signature_id
+                  type: UUID
+        - sql:
+            sql: |
+              UPDATE applications application
+              SET contract_status = CASE
+                  WHEN application.status = 'CONTRACT_SIGNED' THEN 'SIGNED'
+                  WHEN EXISTS (
+                      SELECT 1
+                      FROM application_documents document
+                      WHERE document.application_id = application.id
+                        AND document.document_type = 'CREDIT_AGREEMENT'
+                  ) THEN 'READY_TO_SIGN'
+                  ELSE 'NOT_CREATED'
+              END;
+        - addUniqueConstraint:
+            tableName: applications
+            columnNames: signature_id
+            constraintName: uq_applications_signature_id
