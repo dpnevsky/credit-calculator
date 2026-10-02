@@ -1,8 +1,0 @@
-POST http://localhost:8081/internal/test/offers/generate
-Content-Type: application/json
-
-{
-  "applicationId": "22222222-2222-2222-2222-222222222222",
-  "requestedAmount": 300000.00,
-  "termMonths": 24
-}

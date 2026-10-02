@@ -1,2 +1,0 @@
-POST http://localhost:8081/internal/test/scoring/evaluate-sample
-Content-Type: application/json
