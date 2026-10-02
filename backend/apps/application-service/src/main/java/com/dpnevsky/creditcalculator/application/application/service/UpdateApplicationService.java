@@ -34,7 +34,11 @@ public class UpdateApplicationService {
 
     @Transactional
     public UpdateApplicationResponse update(UUID applicationId, String userEmail, UpdateApplicationRequest request) {
-        ApplicationEntity existingApplication = applicationAccessService.getOwnedApplication(applicationId, userEmail);
+        ApplicationEntity existingApplication = applicationAccessService.getOwnedApplicationForUpdate(applicationId, userEmail);
+        if (!"DRAFT".equals(existingApplication.getStatus())
+                && !"PRESCORING_REJECTED".equals(existingApplication.getStatus())) {
+            throw new IllegalStateException("Only draft or prescoring-rejected applications can be updated");
+        }
 
         LegacyPrescoringService.PrescoringResult prescoringResult = legacyPrescoringService.evaluate(
                 request.amount(),

@@ -58,13 +58,13 @@ public class KeycloakAuthService {
         form.add("client_id", properties.clientId());
         form.add("refresh_token", refreshToken);
 
-        return webClient.post()
+        return enrichWithClientSecret(form).flatMap(enrichedForm -> webClient.post()
                 .uri("/realms/{realm}/protocol/openid-connect/logout", properties.realm())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body(BodyInserters.fromFormData(form))
+                .body(BodyInserters.fromFormData(enrichedForm))
                 .retrieve()
                 .toBodilessEntity()
-                .then();
+                .then());
     }
 
     public Mono<AuthDtos.AuthResponse> register(AuthDtos.RegisterRequest request) {

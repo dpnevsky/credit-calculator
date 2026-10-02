@@ -50,7 +50,7 @@ public class RequestDocumentsService {
 
     @Transactional
     public RequestDocumentsResponse requestDocuments(UUID applicationId, String userEmail, String paymentType) {
-        ApplicationEntity existingApplication = applicationAccessService.getOwnedApplication(applicationId, userEmail);
+        ApplicationEntity existingApplication = applicationAccessService.getOwnedApplicationForUpdate(applicationId, userEmail);
         ensureDocumentsRequestAllowed(existingApplication.getStatus());
 
         ApplicationDocumentEntity existingDocument = applicationDocumentRepository

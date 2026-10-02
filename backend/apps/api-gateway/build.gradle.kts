@@ -11,6 +11,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
+    runtimeOnly(libs.logstash.logback.encoder)
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 

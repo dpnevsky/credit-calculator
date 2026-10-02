@@ -39,16 +39,16 @@ export const normalizeApplicationStatus = (status: string) => {
 
 export const getEffectiveApplicationStatus = (status: string) => normalizeApplicationStatus(status);
 
-export const getApplicationStatusLabel = (status: string, _applicationId?: string) =>
+export const getApplicationStatusLabel = (status: string) =>
   statusConfig[getEffectiveApplicationStatus(status)]?.label ?? normalizeApplicationStatus(status);
 
-export const getApplicationStatusColor = (status: string, _applicationId?: string) =>
+export const getApplicationStatusColor = (status: string) =>
   statusConfig[getEffectiveApplicationStatus(status)]?.color ?? '#6b7280';
 
 export const getContractStatusLabel = (status: string) =>
   contractStatusLabels[status] ?? status;
 
-export const isRejectedApplicationStatus = (status: string, _applicationId?: string) => {
+export const isRejectedApplicationStatus = (status: string) => {
   const effectiveStatus = getEffectiveApplicationStatus(status);
   return effectiveStatus === 'PRESCORING_REJECTED' || effectiveStatus === 'SCORING_REJECTED';
 };

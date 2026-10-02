@@ -10,6 +10,9 @@ import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @Component
 public class KafkaDocumentCommandPublisher implements DocumentCommandPublisher {
@@ -43,7 +46,14 @@ public class KafkaDocumentCommandPublisher implements DocumentCommandPublisher {
                 payload
         );
 
-        kafkaTemplate.send(TOPIC, payload.applicationId().toString(), envelope);
+        try {
+            kafkaTemplate.send(TOPIC, payload.applicationId().toString(), envelope).get(10, TimeUnit.SECONDS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while publishing document event", exception);
+        } catch (ExecutionException | TimeoutException exception) {
+            throw new IllegalStateException("Failed to publish document event", exception);
+        }
 
         log.info(
                 "Published DocumentGenerationRequested to topic={} for applicationId={}, requestId={}",

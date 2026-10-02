@@ -53,7 +53,7 @@ public class SubmitApplicationService {
 
     @Transactional
     public SubmitApplicationResponse submit(UUID applicationId, String userEmail, SubmitApplicationRequest request) {
-        ApplicationEntity existingApplication = applicationAccessService.getOwnedApplication(applicationId, userEmail);
+        ApplicationEntity existingApplication = applicationAccessService.getOwnedApplicationForUpdate(applicationId, userEmail);
 
         if (!"DRAFT".equals(existingApplication.getStatus())) {
             throw new IllegalStateException("Only draft applications can be submitted for scoring");

@@ -271,9 +271,9 @@ const ApplicationDetails: React.FC = () => {
           <h2>Заявка #{applicationId?.slice(0, 8)}</h2>
           <span
             className="status-badge"
-            style={{ backgroundColor: getApplicationStatusColor(application.status, application.applicationId) }}
+            style={{ backgroundColor: getApplicationStatusColor(application.status) }}
           >
-            {getApplicationStatusLabel(application.status, application.applicationId)}
+            {getApplicationStatusLabel(application.status)}
           </span>
         </div>
         <div className="header-actions">
@@ -285,7 +285,7 @@ const ApplicationDetails: React.FC = () => {
         </div>
       </div>
 
-      {isRejectedApplicationStatus(application.status, application.applicationId) && rejectionReasons.length > 0 && (
+      {isRejectedApplicationStatus(application.status) && rejectionReasons.length > 0 && (
         <div className="card card-danger">
           <h3>Причина отказа</h3>
           <ul className="rejection-list">
@@ -407,16 +407,16 @@ const ApplicationDetails: React.FC = () => {
       </div>
 
       {scoringResult && (
-        <div className="card scoring-result-card" style={{ borderLeftColor: getApplicationStatusColor(application.status, application.applicationId) }}>
+        <div className="card scoring-result-card" style={{ borderLeftColor: getApplicationStatusColor(application.status) }}>
           <h3>Результат скоринга</h3>
           <div className="info-grid">
             <div className="info-item">
               <span className="info-label">Решение</span>
               <span
                 className="info-value scoring-result-status"
-                style={{ color: getApplicationStatusColor(application.status, application.applicationId) }}
+                style={{ color: getApplicationStatusColor(application.status) }}
               >
-                {getApplicationStatusLabel(application.status, application.applicationId)}
+                {getApplicationStatusLabel(application.status)}
               </span>
             </div>
             <div className="info-item">

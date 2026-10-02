@@ -9,6 +9,8 @@ import com.dpnevsky.creditcalculator.contracts.eventenvelope.EventEnvelope;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -25,6 +27,48 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class DocumentGeneratedConsumerTest {
+
+    @ParameterizedTest
+    @ValueSource(strings = {"DRAFT", "SCORING_REJECTED", "OFFER_SELECTED", "CONTRACT_SIGNED"})
+    void ignoresLateEventsForApplicationsOutsideDocumentGeneration(String status) throws Exception {
+        ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        ApplicationDocumentRepository documents = mock(ApplicationDocumentRepository.class);
+        ApplicationRepository applications = mock(ApplicationRepository.class);
+        UUID id = UUID.randomUUID();
+        DocumentGenerated event = new DocumentGenerated(UUID.randomUUID(), id, UUID.randomUUID(),
+                "CREDIT_AGREEMENT", "PDF", "agreement.pdf", "application/pdf", "agreement.pdf",
+                "GENERATED", OffsetDateTime.now());
+        when(applications.findByIdForUpdate(id)).thenReturn(Optional.of(buildApplication(id, status)));
+        EventEnvelope<DocumentGenerated> envelope = new EventEnvelope<>(UUID.randomUUID(),
+                "DocumentGenerated", 1, OffsetDateTime.now(), "document-service", id.toString(), null, event);
+
+        new DocumentGeneratedConsumer(mapper, documents, applications)
+                .consume(mapper.writeValueAsString(envelope));
+
+        verify(applications, never()).save(any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"XML", "FAILED", "OTHER_DOCUMENT"})
+    void doesNotEnableSigningForUnusableContract(String variant) throws Exception {
+        ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        ApplicationDocumentRepository documents = mock(ApplicationDocumentRepository.class);
+        ApplicationRepository applications = mock(ApplicationRepository.class);
+        UUID id = UUID.randomUUID();
+        DocumentGenerated event = new DocumentGenerated(UUID.randomUUID(), id, UUID.randomUUID(),
+                variant.equals("OTHER_DOCUMENT") ? variant : "CREDIT_AGREEMENT",
+                variant.equals("XML") ? variant : "PDF", "agreement.pdf", "application/pdf", "agreement.pdf",
+                variant.equals("FAILED") ? variant : "GENERATED", OffsetDateTime.now());
+        when(applications.findByIdForUpdate(id))
+                .thenReturn(Optional.of(buildApplication(id, "DOCUMENTS_REQUESTED")));
+        EventEnvelope<DocumentGenerated> envelope = new EventEnvelope<>(UUID.randomUUID(),
+                "DocumentGenerated", 1, OffsetDateTime.now(), "document-service", id.toString(), null, event);
+
+        new DocumentGeneratedConsumer(mapper, documents, applications)
+                .consume(mapper.writeValueAsString(envelope));
+
+        verify(applications, never()).save(any());
+    }
 
     @Test
     void healsApplicationStatusForDuplicateDocumentEvents() throws Exception {
@@ -64,7 +108,7 @@ class DocumentGeneratedConsumerTest {
 
         when(applicationDocumentRepository.findByDocumentId(documentId))
                 .thenReturn(Optional.of(buildDocument(applicationId, documentId)));
-        when(applicationRepository.findById(applicationId))
+        when(applicationRepository.findByIdForUpdate(applicationId))
                 .thenReturn(Optional.of(buildApplication(applicationId, "DOCUMENTS_REQUESTED")));
 
         consumer.consume(objectMapper.writeValueAsString(envelope));

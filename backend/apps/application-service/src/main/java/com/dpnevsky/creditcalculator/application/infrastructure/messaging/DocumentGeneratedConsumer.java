@@ -47,9 +47,11 @@ public class DocumentGeneratedConsumer {
     public void consume(String rawMessage) {
         EventEnvelope<DocumentGenerated> envelope = parse(rawMessage);
         DocumentGenerated payload = envelope.payload();
+        ApplicationEntity application = applicationRepository.findByIdForUpdate(payload.applicationId())
+                .orElseThrow(() -> new IllegalStateException("Application not found for document event"));
 
         if (applicationDocumentRepository.findByDocumentId(payload.documentId()).isPresent()) {
-            markApplicationDocumentsReady(payload.applicationId());
+            markApplicationDocumentsReady(application, payload);
             log.info(
                     "Skip duplicate DocumentGenerated applicationId={}, documentId={}, requestId={}",
                     payload.applicationId(),
@@ -75,7 +77,7 @@ public class DocumentGeneratedConsumer {
         );
 
         applicationDocumentRepository.save(documentEntity);
-        markApplicationDocumentsReady(payload.applicationId());
+        markApplicationDocumentsReady(application, payload);
 
         log.info(
                 "Saved DocumentGenerated applicationId={}, documentId={}, requestId={}",
@@ -96,28 +98,34 @@ public class DocumentGeneratedConsumer {
         }
     }
 
-    private void markApplicationDocumentsReady(UUID applicationId) {
-        applicationRepository.findById(applicationId)
-                .ifPresent(application -> {
-                    if (ContractStatus.SIGNED.name().equals(application.getContractStatus())) {
-                        return;
-                    }
+    private void markApplicationDocumentsReady(ApplicationEntity application, DocumentGenerated document) {
+        if (!"CREDIT_AGREEMENT".equals(document.documentType())
+                || !"PDF".equals(document.format())
+                || !"GENERATED".equals(document.status())) {
+            return;
+        }
+        if (!ApplicationStatus.DOCUMENTS_REQUESTED.name().equals(application.getStatus())
+                && !ApplicationStatus.DOCUMENTS_READY.name().equals(application.getStatus())) {
+            return;
+        }
+        if (ContractStatus.SIGNED.name().equals(application.getContractStatus())) {
+            return;
+        }
 
-                    boolean changed = false;
+        boolean changed = false;
 
-                    if (!ApplicationStatus.DOCUMENTS_READY.name().equals(application.getStatus())) {
-                        application.setStatus(ApplicationStatus.DOCUMENTS_READY.name());
-                        changed = true;
-                    }
-                    if (!ContractStatus.READY_TO_SIGN.name().equals(application.getContractStatus())) {
-                        application.setContractStatus(ContractStatus.READY_TO_SIGN.name());
-                        changed = true;
-                    }
+        if (!ApplicationStatus.DOCUMENTS_READY.name().equals(application.getStatus())) {
+            application.setStatus(ApplicationStatus.DOCUMENTS_READY.name());
+            changed = true;
+        }
+        if (!ContractStatus.READY_TO_SIGN.name().equals(application.getContractStatus())) {
+            application.setContractStatus(ContractStatus.READY_TO_SIGN.name());
+            changed = true;
+        }
 
-                    if (changed) {
-                        application.setUpdatedAt(OffsetDateTime.now());
-                        applicationRepository.save(application);
-                    }
-                });
+        if (changed) {
+            application.setUpdatedAt(OffsetDateTime.now());
+            applicationRepository.save(application);
+        }
     }
 }

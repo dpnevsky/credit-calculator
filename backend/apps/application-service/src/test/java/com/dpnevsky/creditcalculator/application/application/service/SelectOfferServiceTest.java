@@ -40,7 +40,7 @@ class SelectOfferServiceTest {
         UUID applicationId = UUID.randomUUID();
         UUID offerId = UUID.randomUUID();
 
-        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+        when(applicationAccessService.getOwnedApplicationForUpdate(applicationId, "owner@example.com"))
                 .thenReturn(buildApplication(applicationId, "DRAFT"));
 
         IllegalStateException exception = assertThrows(
@@ -75,7 +75,7 @@ class SelectOfferServiceTest {
         UUID offerId = UUID.randomUUID();
         OfferEntity offer = buildOffer(applicationId, offerId, false);
 
-        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+        when(applicationAccessService.getOwnedApplicationForUpdate(applicationId, "owner@example.com"))
                 .thenReturn(buildApplication(applicationId, "SCORING_COMPLETED"));
         when(offerRepository.findByIdAndApplicationId(offerId, applicationId)).thenReturn(Optional.of(offer));
 
@@ -110,7 +110,7 @@ class SelectOfferServiceTest {
         UUID offerId = UUID.randomUUID();
         OfferEntity offer = buildOffer(applicationId, offerId, false);
 
-        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+        when(applicationAccessService.getOwnedApplicationForUpdate(applicationId, "owner@example.com"))
                 .thenReturn(buildApplication(applicationId, "SCORING_COMPLETED"));
         when(offerRepository.findByIdAndApplicationId(offerId, applicationId)).thenReturn(Optional.of(offer));
 
@@ -138,7 +138,7 @@ class SelectOfferServiceTest {
         OfferEntity offer = buildOffer(applicationId, offerId, true);
         ApplicationSubmitDataEntity submitData = buildSubmitData(applicationId, null);
 
-        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+        when(applicationAccessService.getOwnedApplicationForUpdate(applicationId, "owner@example.com"))
                 .thenReturn(buildApplication(applicationId, "SCORING_COMPLETED"));
         when(offerRepository.findByIdAndApplicationId(offerId, applicationId)).thenReturn(Optional.of(offer));
         when(applicationSubmitDataRepository.findById(applicationId)).thenReturn(Optional.of(submitData));
@@ -195,7 +195,7 @@ class SelectOfferServiceTest {
         ApplicationEntity application = buildApplication(applicationId, "SCORING_COMPLETED");
         OfferEntity offer = buildOffer(applicationId, offerId, true);
 
-        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+        when(applicationAccessService.getOwnedApplicationForUpdate(applicationId, "owner@example.com"))
                 .thenReturn(application);
         when(offerRepository.findByIdAndApplicationId(offerId, applicationId)).thenReturn(Optional.of(offer));
 

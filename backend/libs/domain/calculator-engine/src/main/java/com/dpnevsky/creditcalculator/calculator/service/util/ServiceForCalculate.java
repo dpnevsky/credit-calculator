@@ -34,14 +34,14 @@ public final class ServiceForCalculate {
         BigDecimal monthlyRate = rate.divide(ONE_HUNDRED_PERCENT.multiply(TWELVE_MONTH), 10, RoundingMode.HALF_EVEN);
 
         if (monthlyRate.compareTo(BigDecimal.ZERO) == 0) {
-            return totalAmount.divide(BigDecimal.valueOf(term), 0, RoundingMode.HALF_EVEN);
+            return totalAmount.divide(BigDecimal.valueOf(term), 2, RoundingMode.HALF_EVEN);
         }
 
         BigDecimal pow = BigDecimal.ONE.add(monthlyRate).pow(term);
         BigDecimal annuityCoefficient = monthlyRate.multiply(pow)
                 .divide(pow.subtract(BigDecimal.ONE), 10, RoundingMode.HALF_EVEN);
 
-        return totalAmount.multiply(annuityCoefficient).setScale(0, RoundingMode.HALF_EVEN);
+        return totalAmount.multiply(annuityCoefficient).setScale(2, RoundingMode.HALF_EVEN);
     }
 
     /**

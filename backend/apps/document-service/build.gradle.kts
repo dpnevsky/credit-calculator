@@ -25,6 +25,8 @@ dependencies {
 
     runtimeOnly(libs.postgresql)
 
+    runtimeOnly(libs.logstash.logback.encoder)
+
     testImplementation(project(":libs:testing:test-support"))
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }

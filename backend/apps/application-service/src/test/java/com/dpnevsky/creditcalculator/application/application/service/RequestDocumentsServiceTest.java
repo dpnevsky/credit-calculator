@@ -45,7 +45,7 @@ class RequestDocumentsServiceTest {
         UUID applicationId = UUID.randomUUID();
         OfferEntity selectedOffer = buildOffer(applicationId);
 
-        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+        when(applicationAccessService.getOwnedApplicationForUpdate(applicationId, "owner@example.com"))
                 .thenReturn(buildApplication(applicationId, "OFFER_SELECTED", "DIFFERENTIAL"));
         when(applicationDocumentRepository.findFirstByApplicationIdAndDocumentTypeOrderByGeneratedAtDesc(
                 applicationId,
@@ -84,7 +84,7 @@ class RequestDocumentsServiceTest {
         );
         UUID applicationId = UUID.randomUUID();
 
-        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+        when(applicationAccessService.getOwnedApplicationForUpdate(applicationId, "owner@example.com"))
                 .thenReturn(buildApplication(applicationId, "DOCUMENTS_REQUESTED", "ANNUITY"));
         when(applicationDocumentRepository.findFirstByApplicationIdAndDocumentTypeOrderByGeneratedAtDesc(
                 applicationId,

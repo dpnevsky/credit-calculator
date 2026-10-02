@@ -6,6 +6,8 @@ import com.dpnevsky.creditcalculator.application.domain.prescoring.LegacyPrescor
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.entity.ApplicationEntity;
 import com.dpnevsky.creditcalculator.application.infrastructure.persistence.repository.ApplicationRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -16,6 +18,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
@@ -23,6 +27,23 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class UpdateApplicationServiceTest {
+
+    @ParameterizedTest
+    @ValueSource(strings = {"SCORING_COMPLETED", "SCORING_REJECTED", "OFFER_SELECTED",
+            "DOCUMENTS_REQUESTED", "DOCUMENTS_READY", "CONTRACT_SIGNED"})
+    void rejectsChangesAfterScoring(String status) {
+        ApplicationAccessService access = mock(ApplicationAccessService.class);
+        ApplicationRepository repository = mock(ApplicationRepository.class);
+        LegacyPrescoringService prescoring = mock(LegacyPrescoringService.class);
+        UUID id = UUID.randomUUID();
+        when(access.getOwnedApplicationForUpdate(id, "owner@example.com"))
+                .thenReturn(buildApplication(id, status));
+
+        assertThrows(IllegalStateException.class, () ->
+                new UpdateApplicationService(access, repository, prescoring)
+                        .update(id, "owner@example.com", buildUpdateRequest()));
+        verifyNoInteractions(repository, prescoring);
+    }
 
     @Test
     void returnsNoOffersAfterSuccessfulUpdatePrescoring() {
@@ -36,7 +57,7 @@ class UpdateApplicationServiceTest {
         );
         UUID applicationId = UUID.randomUUID();
 
-        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+        when(applicationAccessService.getOwnedApplicationForUpdate(applicationId, "owner@example.com"))
                 .thenReturn(buildApplication(applicationId, "DRAFT"));
         when(prescoringService.evaluate(any(), any(), any()))
                 .thenReturn(new LegacyPrescoringService.PrescoringResult(true, List.of()));

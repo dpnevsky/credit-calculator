@@ -48,7 +48,7 @@ public class SelectOfferService {
             UUID offerId,
             SelectOfferRequest request
     ) {
-        ApplicationEntity application = applicationAccessService.getOwnedApplication(applicationId, userEmail);
+        ApplicationEntity application = applicationAccessService.getOwnedApplicationForUpdate(applicationId, userEmail);
         ensureOfferSelectionAllowed(application.getStatus());
 
         OfferEntity offer = getExistingOffer(applicationId, offerId);

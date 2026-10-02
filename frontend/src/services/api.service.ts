@@ -137,9 +137,10 @@ const api = axios.create({
 
 api.interceptors.request.use(async (config) => {
   const token = await AuthService.getToken(30);
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (!token) {
+    throw new Error('Сессия завершена. Войдите в аккаунт снова.');
   }
+  config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 

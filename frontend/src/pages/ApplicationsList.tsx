@@ -86,9 +86,9 @@ const ApplicationsList: React.FC = () => {
                     <span className="app-card-id">Номер заявки: {application.applicationId.slice(0, 8)}</span>
                     <span
                       className="status-badge"
-                      style={{ backgroundColor: getApplicationStatusColor(application.status, application.applicationId) }}
+                      style={{ backgroundColor: getApplicationStatusColor(application.status) }}
                     >
-                      {getApplicationStatusLabel(application.status, application.applicationId)}
+                      {getApplicationStatusLabel(application.status)}
                     </span>
                   </div>
                   <div className="app-card-body">

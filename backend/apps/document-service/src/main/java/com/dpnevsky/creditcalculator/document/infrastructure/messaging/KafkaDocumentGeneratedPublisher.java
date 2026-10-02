@@ -9,6 +9,9 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @Component
 public class KafkaDocumentGeneratedPublisher implements DocumentGeneratedPublisher {
@@ -41,7 +44,14 @@ public class KafkaDocumentGeneratedPublisher implements DocumentGeneratedPublish
                 event
         );
 
-        kafkaTemplate.send(TOPIC, event.applicationId().toString(), envelope);
+        try {
+            kafkaTemplate.send(TOPIC, event.applicationId().toString(), envelope).get(10, TimeUnit.SECONDS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while publishing document event", exception);
+        } catch (ExecutionException | TimeoutException exception) {
+            throw new IllegalStateException("Failed to publish document event", exception);
+        }
 
         log.info(
                 "Published DocumentGenerated to topic={} applicationId={}, documentId={}",

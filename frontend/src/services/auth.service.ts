@@ -45,6 +45,7 @@ const REFRESH_TOKEN_KEY = 'cc_refresh_token';
 const EXPIRES_AT_KEY = 'cc_access_token_expires_at';
 const authStateListeners = new Set<AuthStateListener>();
 let refreshPromise: Promise<User | null> | null = null;
+let sessionVersion = 0;
 
 function getAccessToken(): string | undefined {
   return localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined;
@@ -71,9 +72,13 @@ function saveTokens(tokens: TokenResponse): void {
 }
 
 function clearTokens(): void {
+  sessionVersion += 1;
+  refreshPromise = null;
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(EXPIRES_AT_KEY);
+  localStorage.removeItem('cc_create_application_form_draft');
+  localStorage.removeItem('cc_create_application_scoring_draft');
 }
 
 function emitAuthState(user: User | null): void {
@@ -158,16 +163,25 @@ function getProfileLoadErrorMessage(action: ProfileLoadAction): string {
 async function loadCurrentUserAfterAuth(
   tokens: TokenResponse,
   action: ProfileLoadAction,
+  version: number,
 ): Promise<User> {
+  if (version !== sessionVersion) {
+    throw new Error('Сессия завершена. Попробуйте войти снова.');
+  }
   saveTokens(tokens);
 
   try {
     const user = await fetchCurrentUserProfile(tokens.accessToken);
+    if (version !== sessionVersion) {
+      throw new Error('Сессия завершена. Попробуйте войти снова.');
+    }
     emitAuthState(user);
     return user;
   } catch {
-    clearTokens();
-    emitAuthState(null);
+    if (version === sessionVersion) {
+      clearTokens();
+      emitAuthState(null);
+    }
     throw new Error(getProfileLoadErrorMessage(action));
   }
 }
@@ -184,6 +198,7 @@ async function refreshSession(): Promise<User | null> {
     return null;
   }
 
+  const version = sessionVersion;
   refreshPromise = (async () => {
     try {
       const response = await fetch('/api/auth/refresh', {
@@ -192,17 +207,27 @@ async function refreshSession(): Promise<User | null> {
         body: JSON.stringify({ refreshToken }),
       });
       const tokens = await parseResponse(response, 'refresh');
+      if (version !== sessionVersion) {
+        return null;
+      }
       saveTokens(tokens);
 
       const user = await fetchCurrentUserProfile(tokens.accessToken);
+      if (version !== sessionVersion) {
+        return null;
+      }
       emitAuthState(user);
       return user;
     } catch {
-      clearTokens();
-      emitAuthState(null);
+      if (version === sessionVersion) {
+        clearTokens();
+        emitAuthState(null);
+      }
       return null;
     } finally {
-      refreshPromise = null;
+      if (version === sessionVersion) {
+        refreshPromise = null;
+      }
     }
   })();
 
@@ -211,6 +236,7 @@ async function refreshSession(): Promise<User | null> {
 
 const AuthService = {
   async init(): Promise<User | null> {
+    const version = sessionVersion;
     const token = getAccessToken();
     if (!token && !getRefreshToken()) {
       emitAuthState(null);
@@ -223,45 +249,57 @@ const AuthService = {
 
     try {
       const user = await fetchCurrentUserProfile(token);
+      if (version !== sessionVersion) {
+        return null;
+      }
       emitAuthState(user);
       return user;
     } catch {
-      return refreshSession();
+      return version === sessionVersion ? refreshSession() : null;
     }
   },
 
   async login(username: string, password: string): Promise<User | null> {
+    clearTokens();
+    emitAuthState(null);
+    const version = sessionVersion;
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
     const tokens = await parseResponse(response, 'login');
-    return loadCurrentUserAfterAuth(tokens, 'login');
+    return loadCurrentUserAfterAuth(tokens, 'login', version);
   },
 
   async register(payload: RegistrationPayload): Promise<User | null> {
+    clearTokens();
+    emitAuthState(null);
+    const version = sessionVersion;
     const response = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     const tokens = await parseResponse(response, 'register');
-    return loadCurrentUserAfterAuth(tokens, 'register');
+    return loadCurrentUserAfterAuth(tokens, 'register', version);
   },
 
   async logout(): Promise<void> {
     const refreshToken = getRefreshToken();
-    if (refreshToken) {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
-    }
-
     clearTokens();
     emitAuthState(null);
+    if (refreshToken) {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+      } catch {
+        console.warn('Не удалось завершить удалённую сессию. Локальная сессия очищена.');
+      }
+    }
   },
 
   async getToken(minValidity: number = 30): Promise<string | undefined> {

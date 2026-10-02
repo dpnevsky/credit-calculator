@@ -48,7 +48,7 @@ class SubmitApplicationServiceTest {
         );
         UUID applicationId = UUID.randomUUID();
 
-        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+        when(applicationAccessService.getOwnedApplicationForUpdate(applicationId, "owner@example.com"))
                 .thenReturn(buildApplication(applicationId, "DRAFT"));
         when(scoringClient.evaluate(any())).thenReturn(buildScoringResponse("APPROVED", List.of()));
 
@@ -85,7 +85,7 @@ class SubmitApplicationServiceTest {
         );
         UUID applicationId = UUID.randomUUID();
 
-        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+        when(applicationAccessService.getOwnedApplicationForUpdate(applicationId, "owner@example.com"))
                 .thenReturn(buildApplication(applicationId, "DRAFT"));
         when(scoringClient.evaluate(any())).thenReturn(buildScoringResponse(
                 "REJECTED",
@@ -119,7 +119,7 @@ class SubmitApplicationServiceTest {
         );
         UUID applicationId = UUID.randomUUID();
 
-        when(applicationAccessService.getOwnedApplication(applicationId, "owner@example.com"))
+        when(applicationAccessService.getOwnedApplicationForUpdate(applicationId, "owner@example.com"))
                 .thenReturn(buildApplication(applicationId, "SCORING_COMPLETED"));
 
         IllegalStateException exception = assertThrows(
