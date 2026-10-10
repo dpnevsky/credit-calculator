@@ -12,3 +12,12 @@ backend/.gradle-local/
 backend/.idea/
 backend/build/
 backend/**/build/
+
+android/.idea/
+android/.gradle/
+android/.kotlin/
+android/**/build/
+android/local.properties
+android/**/*.jks
+android/**/*.keystore
+android/**/keystore.properties

@@ -23,3 +23,5 @@ backend/gradlew text eol=lf
 *.sql text eol=lf
 
 *.ttf binary
+
+android/gradlew text eol=lf
