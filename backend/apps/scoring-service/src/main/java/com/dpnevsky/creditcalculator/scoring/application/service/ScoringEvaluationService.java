@@ -65,7 +65,7 @@ public class ScoringEvaluationService {
                 existingResult.getRulesVersion(),
                 "APPROVED".equals(existingResult.getDecision()) ? policyDecision.maxApprovedAmount() : existingResultDecisionZeroAmount(),
                 "APPROVED".equals(existingResult.getDecision()) ? policyDecision.maxTermMonths() : null,
-                "APPROVED".equals(existingResult.getDecision()) ? policyDecision.finalRate() : null,
+                "APPROVED".equals(existingResult.getDecision()) ? policyDecision.baseInterestRate() : null,
                 "APPROVED".equals(existingResult.getDecision()) ? List.of() : policyDecision.rejectionReasons(),
                 existingResult.getCalculatedAt()
         );
@@ -107,7 +107,7 @@ public class ScoringEvaluationService {
                 "score-v1",
                 decision.maxApprovedAmount(),
                 decision.maxTermMonths(),
-                decision.finalRate(),
+                decision.baseInterestRate(),
                 decision.rejectionReasons(),
                 now
         );
