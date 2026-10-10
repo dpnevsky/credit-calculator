@@ -25,6 +25,7 @@ dependencies {
     runtimeOnly(libs.logstash.logback.encoder)
 
     testImplementation(project(":libs:testing:test-support"))
+    testImplementation(project(":apps:scoring-service"))
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 

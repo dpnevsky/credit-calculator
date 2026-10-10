@@ -9,6 +9,10 @@ import java.math.RoundingMode;
 import java.util.List;
 import java.util.UUID;
 
+import static com.dpnevsky.creditcalculator.calculator.service.util.Constant.DISCOUNT_FOR_INSURANCE;
+import static com.dpnevsky.creditcalculator.calculator.service.util.Constant.DISCOUNT_FOR_SALARY_CLIENT;
+import static com.dpnevsky.creditcalculator.calculator.service.util.Constant.MIN_FINAL_RATE;
+
 @Service
 public class LegacyPreOfferGenerationService {
 
@@ -62,14 +66,14 @@ public class LegacyPreOfferGenerationService {
         BigDecimal rate = baseRate;
 
         if (insuranceEnabled) {
-            rate = rate.subtract(BigDecimal.ONE);
+            rate = rate.subtract(DISCOUNT_FOR_INSURANCE);
         }
 
         if (salaryClient) {
-            rate = rate.subtract(BigDecimal.valueOf(3));
+            rate = rate.subtract(DISCOUNT_FOR_SALARY_CLIENT);
         }
 
-        return rate.setScale(2, RoundingMode.HALF_UP);
+        return rate.max(MIN_FINAL_RATE).setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calculateInsurancePrice(BigDecimal requestedAmount) {

@@ -64,11 +64,18 @@ public class LegacyScoringPolicyService {
                 ? calculatedRate
                 : null;
 
+        // Keep legacy score/risk calculations, but price every offer from the same
+        // customer-specific rate before insurance and salary-client discounts.
+        BigDecimal baseInterestRate = approved
+                ? calculateRate(toLoanScoringData(request, false, false))
+                : null;
+
         return new LegacyScoringDecision(
                 decision,
                 scoreValue,
                 riskGrade,
                 finalRate,
+                baseInterestRate,
                 maxApprovedAmount,
                 maxTermMonths,
                 rejectionReasons
@@ -87,7 +94,11 @@ public class LegacyScoringPolicyService {
     }
 
     private BigDecimal calculateRate(ScoringEvaluationRequest request) {
-        BigDecimal rate = loanApplicationProcessor.processLoanApplication(toLoanScoringData(request), baseRate).rate();
+        return calculateRate(toLoanScoringData(request));
+    }
+
+    private BigDecimal calculateRate(LoanScoringData scoringData) {
+        BigDecimal rate = loanApplicationProcessor.processLoanApplication(scoringData, baseRate).rate();
         return rate.max(MIN_RATE).setScale(2, RoundingMode.HALF_UP);
     }
 
@@ -128,14 +139,26 @@ public class LegacyScoringPolicyService {
     }
 
     private LoanScoringData toLoanScoringData(ScoringEvaluationRequest request) {
+        return toLoanScoringData(
+                request,
+                Boolean.TRUE.equals(request.loanRequest().insuranceEnabled()),
+                Boolean.TRUE.equals(request.loanRequest().salaryClient())
+        );
+    }
+
+    private LoanScoringData toLoanScoringData(
+            ScoringEvaluationRequest request,
+            boolean insuranceEnabled,
+            boolean salaryClient
+    ) {
         return new LoanScoringData(
                 request.loanRequest().amount(),
                 request.birthDate(),
                 LoanScoringData.GenderType.valueOf(request.gender().name()),
                 LoanScoringData.MaritalStatusType.valueOf(request.maritalStatus().name()),
                 request.dependentAmount(),
-                Boolean.TRUE.equals(request.loanRequest().insuranceEnabled()),
-                Boolean.TRUE.equals(request.loanRequest().salaryClient()),
+                insuranceEnabled,
+                salaryClient,
                 new LoanScoringData.Employment(
                         LoanScoringData.EmploymentStatusType.valueOf(request.employment().employmentStatus().name()),
                         request.employment().salary(),
@@ -151,6 +174,7 @@ public class LegacyScoringPolicyService {
             BigDecimal scoreValue,
             String riskGrade,
             BigDecimal finalRate,
+            BigDecimal baseInterestRate,
             BigDecimal maxApprovedAmount,
             Integer maxTermMonths,
             List<String> rejectionReasons

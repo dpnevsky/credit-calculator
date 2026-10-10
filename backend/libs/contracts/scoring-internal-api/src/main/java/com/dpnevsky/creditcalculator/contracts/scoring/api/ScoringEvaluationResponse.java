@@ -34,6 +34,7 @@ public record ScoringEvaluationResponse(
 
         Integer maxTermMonths,
 
+        // Customer-specific rate before insurance and salary-client discounts.
         @DecimalMin("0.00")
         BigDecimal baseInterestRate,
 
